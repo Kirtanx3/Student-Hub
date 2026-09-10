@@ -93,30 +93,6 @@ body {
   overflow: hidden;
 }
 
-/* ===== ISOMETRIC DOT MATRIX ===== */
-.isometric-matrix {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background-image: radial-gradient(var(--text-muted) 1.2px, transparent 1.2px);
-  background-size: 32px 32px;
-  opacity: 0.18;
-  mask-image: radial-gradient(ellipse 75% 65% at 50% 40%, black 20%, transparent 80%);
-  -webkit-mask-image: radial-gradient(ellipse 75% 65% at 50% 40%, black 20%, transparent 80%);
-  animation: matrixDrift 28s linear infinite;
-  z-index: 1;
-}
-
-[data-theme="dark"] .isometric-matrix {
-  opacity: 0.22;
-  background-image: radial-gradient(var(--primary-light) 1.2px, transparent 1.2px);
-}
-
-@keyframes matrixDrift {
-  0% { background-position: 0 0; }
-  100% { background-position: 32px 64px; }
-}
-
 .mesh-orb {
   position: absolute;
   border-radius: 50%;
@@ -1134,6 +1110,91 @@ body {
 .chat-input button:hover:not(:disabled) { box-shadow: 0 4px 16px rgba(79,70,229,0.3); }
 .chat-input button:disabled { opacity: 0.5; cursor: not-allowed; }
 
+/* ===== STUDENT LIST (Teacher view) ===== */
+.student-list-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
+}
+.student-row-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  transition: var(--transition);
+}
+.student-row-card:hover {
+  background: var(--surface-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+.student-row-card .stu-avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--gradient);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.student-row-card .stu-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.student-row-card .stu-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+.student-row-card .stu-info .stu-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.student-row-card .stu-info .stu-email {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.student-row-card .stu-status {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #d1d5db;
+  flex-shrink: 0;
+}
+.student-row-card .stu-status.online {
+  background: #22c55e;
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.15);
+}
+.students-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+.students-empty .empty-icon {
+  font-size: 48px;
+  display: block;
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 900px) {
   .content-grid { grid-template-columns: 1fr; }
@@ -1185,7 +1246,6 @@ body {
 
 <!-- ===== GLOW BACKGROUND ===== -->
 <div class="glow-container" id="glowContainer">
-  <div class="isometric-matrix"></div>
   <div class="mesh-orb mesh-orb-1"></div>
   <div class="mesh-orb mesh-orb-2"></div>
   <div class="mesh-orb mesh-orb-3"></div>
@@ -1597,7 +1657,7 @@ body {
             <h3>Enrolled Students</h3>
             <span style="font-size:13px;color:var(--text-secondary);">Total: <strong id="totalStudentsCount">0</strong></span>
           </div>
-          <div id="studentsList">
+          <div id="studentsList" class="student-list-grid">
             <p style="color:var(--text-muted);font-size:13px;text-align:center;padding:20px;">No students enrolled yet</p>
           </div>
         </div>
@@ -1836,7 +1896,9 @@ function getFirstName(fullName) {
 // ===== AUTH STATE =====
 let currentUser = null;
 let chatUnsubscribe = null, typingUnsubscribe = null, presenceUnsubscribe = null;
+let studentsUnsubscribe = null;
 let userRole = 'student';
+let userDepartment = 'computer-science';
 let isLoggingIn = false;
 let isInitialLoad = true;
 
@@ -1870,6 +1932,7 @@ async function loadDashboard(user) {
       courseLabel = data.courseLabel || 'Computer Science';
       department = data.department || 'Computer Science';
       userRole = role;
+      userDepartment = department;
       
       if (data.photoURL) {
         ['miniAvatar', 'profileAvatar', 'profileUploadPreview'].forEach(id => {
@@ -1968,13 +2031,20 @@ async function loadDashboard(user) {
     $('joinedDate').textContent = d.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
   }
 
+  // HIDE LOGIN, SHOW DASHBOARD
   loginPage.style.display = 'none';
   signupPage.style.display = 'none';
   dashboardPage.style.display = 'block';
 
+  // Setup real-time listeners
   setupPresence(user);
   setupChatListener();
   setupTypingListener(user);
+
+  // NEW: Load students for teacher based on department
+  if (isTeacher) {
+    loadTeacherStudents(department);
+  }
   
   setInterval(() => {
     document.querySelector('.welcome-text').textContent = getGreeting() + ' 👋';
@@ -1995,6 +2065,103 @@ function getCourseEmoji(courseKey) {
     'cloud-computing': '☁️'
   };
   return emojis[courseKey] || '📚';
+}
+
+// ===== NEW: Load students for teacher (matched by course/department) =====
+function loadTeacherStudents(department) {
+  // Cleanup previous listener
+  if (studentsUnsubscribe) {
+    studentsUnsubscribe();
+    studentsUnsubscribe = null;
+  }
+
+  const studentsList = $('studentsList');
+  const totalCount = $('totalStudentsCount');
+  if (!studentsList) return;
+
+  // Query students whose course matches the teacher's department key
+  const q = query(
+    collection(db, 'users'),
+    where('role', '==', 'student'),
+    where('course', '==', department)
+  );
+
+  studentsUnsubscribe = onSnapshot(q, async (snap) => {
+    if (snap.empty) {
+      studentsList.innerHTML = `
+        <div class="students-empty" style="grid-column:1/-1;">
+          <span class="empty-icon">👥</span>
+          No students enrolled in <strong>${getDepartmentLabel(department)}</strong> yet
+        </div>
+      `;
+      if (totalCount) totalCount.textContent = '0';
+      return;
+    }
+
+    // Get online presence snapshot
+    const presenceSnap = await new Promise(resolve => {
+      onValue(dbRef(rtdb, 'presence'), resolve, { onlyOnce: true });
+    });
+    const presenceData = presenceSnap.val() || {};
+
+    let html = '';
+    let count = 0;
+
+    snap.forEach(docSnap => {
+      const student = docSnap.data();
+      const uid = docSnap.id;
+      const rawName = student.name || (student.email ? student.email.split('@')[0] : 'Student');
+      const name = getFirstName(rawName);
+      const email = student.email || '';
+      const isOnline = presenceData[uid] && presenceData[uid].online === true;
+
+      // Avatar: use photoURL if available, else first letter
+      const avatarContent = student.photoURL 
+        ? `<img src="${student.photoURL}" alt="${name}">` 
+        : name.charAt(0).toUpperCase();
+
+      html += `
+        <div class="student-row-card" data-uid="${uid}">
+          <div class="stu-avatar">${avatarContent}</div>
+          <div class="stu-info">
+            <div class="stu-name">${name}</div>
+            <div class="stu-email">${email}</div>
+          </div>
+          <div class="stu-status ${isOnline ? 'online' : ''}" title="${isOnline ? 'Online' : 'Offline'}"></div>
+        </div>
+      `;
+      count++;
+    });
+
+    studentsList.innerHTML = html;
+    if (totalCount) totalCount.textContent = String(count);
+  }, (err) => {
+    console.error('Students listener error:', err);
+    studentsList.innerHTML = `<p style="color:#dc2626;text-align:center;padding:20px;">⚠️ Error loading students</p>`;
+  });
+}
+
+function getDepartmentLabel(deptKey) {
+  const labels = {
+    'computer-science': 'Computer Science',
+    'data-science': 'Data Science',
+    'artificial-intelligence': 'Artificial Intelligence',
+    'cybersecurity': 'Cybersecurity',
+    'software-engineering': 'Software Engineering',
+    'information-technology': 'Information Technology',
+    'business-analytics': 'Business Analytics',
+    'digital-media': 'Digital Media',
+    'game-development': 'Game Development',
+    'cloud-computing': 'Cloud Computing',
+    'mathematics': 'Mathematics',
+    'physics': 'Physics',
+    'chemistry': 'Chemistry',
+    'biology': 'Biology',
+    'engineering': 'Engineering',
+    'business': 'Business',
+    'arts': 'Arts & Humanities'
+  };
+  return labels[deptKey] || deptKey;
 }
 
 // ===== AUTH STATE OBSERVER =====
@@ -2026,6 +2193,7 @@ onAuthStateChanged(auth, async user => {
       if (chatUnsubscribe) { chatUnsubscribe(); chatUnsubscribe = null; }
       if (typingUnsubscribe) { typingUnsubscribe(); typingUnsubscribe = null; }
       if (presenceUnsubscribe) { presenceUnsubscribe(); presenceUnsubscribe = null; }
+      if (studentsUnsubscribe) { studentsUnsubscribe(); studentsUnsubscribe = null; }
       
       if (currentUser) {
         set(dbRef(rtdb, 'presence/' + currentUser.uid), null);
@@ -2677,6 +2845,10 @@ $('confirmLogoutBtn')?.addEventListener('click', async function() {
   if (presenceUnsubscribe) {
     presenceUnsubscribe();
     presenceUnsubscribe = null;
+  }
+  if (studentsUnsubscribe) {
+    studentsUnsubscribe();
+    studentsUnsubscribe = null;
   }
   
   await signOut(auth);
