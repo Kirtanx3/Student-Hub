@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Student Hub</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎓</text></svg>">
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <style>
 /* ===== RESET & BASE ===== */
 * {
@@ -216,6 +217,12 @@ body {
   border: none;
 }
 .btn-teacher:hover { box-shadow: 0 4px 20px rgba(245, 158, 11, 0.35); transform: translateY(-1px); }
+.btn-danger {
+  background: #ef4444;
+  color: #fff;
+  border: none;
+}
+.btn-danger:hover { background: #dc2626; box-shadow: 0 4px 20px rgba(239, 68, 68, 0.35); transform: translateY(-1px); }
 
 /* ===== ROLE TOGGLE ===== */
 .role-toggle {
@@ -530,15 +537,6 @@ body {
 }
 #logoutModal .auth-card .modal-actions .btn-cancel:hover {
   background: var(--surface-hover);
-}
-#logoutModal .auth-card .modal-actions .btn-danger {
-  background: #ef4444;
-  color: #fff;
-  border: none;
-}
-#logoutModal .auth-card .modal-actions .btn-danger:hover {
-  background: #dc2626;
-  box-shadow: 0 4px 20px rgba(239, 68, 68, 0.35);
 }
 
 @keyframes fadeIn {
@@ -1195,6 +1193,125 @@ body {
   opacity: 0.5;
 }
 
+/* ===== QR ATTENDANCE ===== */
+.qr-holder {
+  display: flex;
+  justify-content: center;
+  padding: 24px;
+  background: #fff;
+  border-radius: var(--radius-sm);
+  margin-top: 12px;
+}
+.qr-holder canvas, .qr-holder img {
+  border-radius: 8px;
+}
+.session-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 50px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.session-status.live {
+  background: rgba(34, 197, 94, 0.12);
+  color: #16a34a;
+}
+.session-status.live::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  animation: pulse-dot 1.5s infinite;
+}
+.qr-timer-bar {
+  height: 4px;
+  background: var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-top: 8px;
+  max-width: 220px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.qr-timer-bar .fill {
+  height: 100%;
+  background: var(--gradient);
+  transition: width 0.1s linear;
+}
+
+/* ===== CHECK-IN VIEW (Student) ===== */
+.checkin-hero {
+  text-align: center;
+  padding: 40px 20px;
+}
+.checkin-hero .big-icon {
+  font-size: 72px;
+  margin-bottom: 12px;
+  display: block;
+}
+.checkin-hero h2 { font-size: 22px; margin-bottom: 6px; }
+.checkin-hero p { color: var(--text-secondary); font-size: 14px; }
+
+.scanner-frame {
+  position: relative;
+  width: 100%;
+  max-width: 320px;
+  aspect-ratio: 1;
+  margin: 24px auto;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: #000;
+  border: 3px solid var(--primary);
+}
+.scanner-frame video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.scanner-frame .scan-line {
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #22c55e, transparent);
+  animation: scanMove 2s ease-in-out infinite;
+  box-shadow: 0 0 12px #22c55e;
+}
+@keyframes scanMove {
+  0%, 100% { top: 15%; }
+  50% { top: 85%; }
+}
+
+.checkin-status {
+  margin-top: 16px;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  text-align: center;
+  font-weight: 500;
+}
+.checkin-status.info { background: rgba(59, 130, 246, 0.1); color: #2563eb; }
+.checkin-status.success { background: rgba(34, 197, 94, 0.12); color: #16a34a; }
+.checkin-status.error { background: rgba(239, 68, 68, 0.1); color: #dc2626; }
+
+.geo-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 50px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 8px;
+}
+.geo-badge.ok { color: #16a34a; border-color: rgba(34,197,94,0.3); }
+.geo-badge.bad { color: #dc2626; border-color: rgba(239,68,68,0.3); }
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 900px) {
   .content-grid { grid-template-columns: 1fr; }
@@ -1427,6 +1544,8 @@ body {
         <button class="nav-item" data-view="grades"><span class="icon">📈</span><span class="label">Grades</span></button>
         <button class="nav-item" data-view="messages"><span class="icon">💬</span><span class="label">Messages</span></button>
         <button class="nav-item" data-view="chat"><span class="icon">🗨️</span><span class="label">Chat</span></button>
+        <!-- Student-only: Check In -->
+        <button class="nav-item student-only" data-view="checkin" style="display:none;"><span class="icon">📷</span><span class="label">Check In</span></button>
         <!-- Teacher-only items (hidden by default) -->
         <button class="nav-item teacher-only" data-view="attendance" style="display:none;"><span class="icon">📋</span><span class="label">Attendance</span></button>
         <button class="nav-item teacher-only" data-view="students" style="display:none;"><span class="icon">👨‍🎓</span><span class="label">Students</span></button>
@@ -1603,40 +1722,88 @@ body {
         </div>
       </div>
 
+      <!-- VIEW: Check In (Student Only) -->
+      <div id="view-checkin" class="view">
+        <h2 style="margin-bottom:20px;">📷 Scan Attendance QR</h2>
+        <div class="card" style="max-width:560px;margin:0 auto;">
+          <div class="checkin-hero">
+            <span class="big-icon">📸</span>
+            <h2>Point at the teacher's QR code</h2>
+            <p>You must be physically present in class (within 40m)</p>
+          </div>
+
+          <div id="checkinIdle">
+            <div style="text-align:center;">
+              <button class="btn btn-primary" id="startScannerBtn" style="justify-content:center;">▶️ Start Camera</button>
+              <p style="font-size:12px;color:var(--text-muted);margin-top:8px;">Or paste the code manually below</p>
+              <div style="display:flex;gap:8px;max-width:340px;margin:12px auto 0;">
+                <input type="text" id="manualCodeInput" placeholder="Paste code here..." style="flex:1;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);color:var(--text-primary);font-size:13px;outline:none;">
+                <button class="btn btn-sm" id="manualCodeBtn">Submit</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="checkinScanner" style="display:none;">
+            <div class="scanner-frame">
+              <video id="scannerVideo" playsinline></video>
+              <div class="scan-line"></div>
+            </div>
+            <div style="text-align:center;">
+              <button class="btn btn-sm" id="stopScannerBtn">⏹️ Stop Camera</button>
+            </div>
+          </div>
+
+          <div id="checkinStatus" class="checkin-status info" style="display:none;"></div>
+          <div style="text-align:center;">
+            <div class="geo-badge" id="geoBadge">📍 Location: checking...</div>
+          </div>
+        </div>
+      </div>
+
       <!-- VIEW: Attendance (Teacher Only) -->
       <div id="view-attendance" class="view">
         <h2 style="margin-bottom:20px;">📋 Take Attendance</h2>
         <div class="card">
           <div style="text-align:center;padding:40px 20px;">
             <div style="font-size:48px;margin-bottom:16px;">👨‍🏫</div>
-            <h3>Teacher Attendance Module</h3>
-            <p style="color:var(--text-secondary);margin-bottom:20px;">Select a course to start taking attendance</p>
+            <h3>Start a Secure Attendance Session</h3>
+            <p style="color:var(--text-secondary);margin-bottom:20px;">A rotating QR code will be generated. Students must be within 40m to check in.</p>
             <select id="teacherCourseSelect" style="max-width:300px;margin:0 auto;display:block;padding:10px;border:1.5px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);color:var(--text-primary);font-size:14px;">
               <option value="">Select a course...</option>
-              <option value="course_101">Computer Science 101</option>
-              <option value="course_102">Data Structures</option>
-              <option value="course_103">Web Development</option>
+              <option value="computer-science">Computer Science</option>
+              <option value="data-science">Data Science</option>
+              <option value="artificial-intelligence">Artificial Intelligence</option>
+              <option value="cybersecurity">Cybersecurity</option>
+              <option value="software-engineering">Software Engineering</option>
+              <option value="information-technology">Information Technology</option>
             </select>
             <button class="btn btn-teacher" style="margin-top:16px;" id="startAttendanceBtn">▶️ Start Attendance Session</button>
+            <div style="margin-top:12px;">
+              <div class="geo-badge" id="teacherGeoBadge">📍 Getting your location...</div>
+            </div>
           </div>
         </div>
         <div id="attendanceSession" style="display:none;margin-top:20px;">
           <div class="card">
             <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;">
               <div>
-                <h3>📱 QR Code</h3>
-                <p style="color:var(--text-secondary);font-size:13px;">Students scan this to check in</p>
+                <h3>📱 Rotating QR Code</h3>
+                <p style="color:var(--text-secondary);font-size:13px;">Refreshes every 8 seconds — screenshots won't work</p>
               </div>
-              <button class="btn btn-danger" id="stopAttendanceBtn">⏹️ End Session</button>
+              <div style="display:flex;align-items:center;gap:12px;">
+                <span class="session-status live" id="sessionStatus">Live</span>
+                <button class="btn btn-danger btn-sm" id="stopAttendanceBtn">⏹️ End Session</button>
+              </div>
             </div>
-            <div style="display:flex;justify-content:center;padding:20px;background:#fff;border-radius:var(--radius-sm);margin-top:12px;">
+            <div class="qr-holder">
               <div style="text-align:center;">
-                <div id="qrCodePlaceholder" style="width:200px;height:200px;background:var(--bg);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;font-size:48px;color:var(--text-muted);">
-                  📱
+                <div id="qrCodePlaceholder" style="width:220px;height:220px;display:flex;align-items:center;justify-content:center;font-size:48px;color:var(--text-muted);">
+                  ⏳
                 </div>
                 <p style="margin-top:12px;font-size:13px;color:var(--text-secondary);">
-                  <span id="qrTimer">⏳ Session Active</span>
+                  <span id="qrTimer">⏳ Starting...</span>
                 </p>
+                <div class="qr-timer-bar" id="qrTimerBar"><div class="fill" style="width:100%;"></div></div>
               </div>
             </div>
             <div style="margin-top:16px;">
@@ -1694,7 +1861,8 @@ import {
   addDoc,
   serverTimestamp,
   deleteDoc,
-  where
+  where,
+  limit
 } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
 import {
   getStorage,
@@ -1732,12 +1900,8 @@ const rtdb = getDatabase(app);
 
 // ===== SET PERSISTENCE =====
 setPersistence(auth, browserLocalPersistence)
-  .then(() => {
-    console.log("✅ Persistence set to LOCAL");
-  })
-  .catch((error) => {
-    console.error("❌ Persistence error:", error);
-  });
+  .then(() => console.log("✅ Persistence set to LOCAL"))
+  .catch((error) => console.error("❌ Persistence error:", error));
 
 // ===== GLOW EFFECT =====
 const glowBlob = document.getElementById('glowBlob');
@@ -1775,7 +1939,6 @@ const logoutModal = $('logoutModal');
 // ===== ROLE TOGGLE =====
 let selectedRole = 'student';
 
-// Login role toggle
 $('loginStudentBtn').addEventListener('click', function() {
   selectedRole = 'student';
   $('loginStudentBtn').className = 'role-toggle-btn active-student';
@@ -1792,7 +1955,6 @@ $('loginTeacherBtn').addEventListener('click', function() {
   $('loginBtn').textContent = '👨‍🏫 Sign In as Teacher';
 });
 
-// Signup role toggle
 $('signupStudentBtn').addEventListener('click', function() {
   selectedRole = 'student';
   $('signupStudentBtn').className = 'role-toggle-btn active-student';
@@ -1842,7 +2004,7 @@ document.querySelectorAll('.toggle-pw').forEach(btn => {
   });
 });
 
-// ===== NAVIGATION =====
+// ===== NAVIGATION (auth pages) =====
 $('showSignup')?.addEventListener('click', e => { e.preventDefault(); loginPage.style.display = 'none'; signupPage.style.display = 'flex'; });
 $('showLogin')?.addEventListener('click', e => { e.preventDefault(); signupPage.style.display = 'none'; loginPage.style.display = 'flex'; });
 $('backFromReset')?.addEventListener('click', e => { e.preventDefault(); forgotModal.style.display = 'none'; loginPage.style.display = 'flex'; });
@@ -1862,12 +2024,7 @@ function showToast(message, type = 'info') {
   
   const container = document.createElement('div');
   container.className = `toast-container ${type}`;
-  
-  const icons = {
-    success: '✅',
-    error: '❌',
-    info: 'ℹ️'
-  };
+  const icons = { success: '✅', error: '❌', info: 'ℹ️' };
   
   container.innerHTML = `
     <span style="font-size:20px;">${icons[type] || 'ℹ️'}</span>
@@ -1883,7 +2040,7 @@ function showToast(message, type = 'info') {
   }, 3000);
 }
 
-// ===== HELPER: Get first name only =====
+// ===== HELPERS =====
 function getFirstName(fullName) {
   if (!fullName) return '';
   const trimmed = fullName.trim();
@@ -1891,6 +2048,58 @@ function getFirstName(fullName) {
   const parts = trimmed.split(/\s+/);
   const first = parts[0];
   return first.charAt(0).toUpperCase() + first.slice(1);
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = String(str || '');
+  return div.innerHTML;
+}
+
+function getGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning 🌅';
+  if (hour < 17) return 'Good afternoon ☀️';
+  return 'Good evening 🌙';
+}
+
+function getCourseEmoji(courseKey) {
+  const emojis = {
+    'computer-science': '🖥️',
+    'data-science': '📊',
+    'artificial-intelligence': '🤖',
+    'cybersecurity': '🔒',
+    'software-engineering': '⚡',
+    'information-technology': '💻',
+    'business-analytics': '📈',
+    'digital-media': '🎨',
+    'game-development': '🎮',
+    'cloud-computing': '☁️'
+  };
+  return emojis[courseKey] || '📚';
+}
+
+function getDepartmentLabel(deptKey) {
+  const labels = {
+    'computer-science': 'Computer Science',
+    'data-science': 'Data Science',
+    'artificial-intelligence': 'Artificial Intelligence',
+    'cybersecurity': 'Cybersecurity',
+    'software-engineering': 'Software Engineering',
+    'information-technology': 'Information Technology',
+    'business-analytics': 'Business Analytics',
+    'digital-media': 'Digital Media',
+    'game-development': 'Game Development',
+    'cloud-computing': 'Cloud Computing',
+    'mathematics': 'Mathematics',
+    'physics': 'Physics',
+    'chemistry': 'Chemistry',
+    'biology': 'Biology',
+    'engineering': 'Engineering',
+    'business': 'Business',
+    'arts': 'Arts & Humanities'
+  };
+  return labels[deptKey] || deptKey;
 }
 
 // ===== AUTH STATE =====
@@ -1902,19 +2111,66 @@ let userDepartment = 'computer-science';
 let isLoggingIn = false;
 let isInitialLoad = true;
 
-function getGreeting() {
-  const hour = new Date().getHours();
-  if (hour < 12) return 'Good morning 🌅';
-  if (hour < 17) return 'Good afternoon ☀️';
-  return 'Good evening 🌙';
+// ===== GEO HELPERS =====
+function getCurrentPosition() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error('Geolocation not supported by this browser'));
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(resolve, reject, {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 0
+    });
+  });
 }
 
+function distanceMeters(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const toRad = d => d * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat/2)**2 +
+            Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+// ===== SESSION TOKEN =====
+// Deterministic token: SHA-256(sessionId:ts:sessionSalt)
+async function generateSessionToken(sessionId, ts, salt) {
+  const data = `${sessionId}:${ts}:${salt}`;
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(data));
+  return Array.from(new Uint8Array(buf))
+    .map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
+}
+
+// ===== DEVICE FINGERPRINT =====
+async function getDeviceFingerprint() {
+  let id = localStorage.getItem('deviceId');
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem('deviceId', id);
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = 200; canvas.height = 40;
+  const ctx = canvas.getContext('2d');
+  ctx.textBaseline = 'top';
+  ctx.font = '14px Arial';
+  ctx.fillStyle = '#4f46e5';
+  ctx.fillText('StudentHub-fp', 2, 2);
+  const canvasHash = canvas.toDataURL().slice(-32);
+  const combined = `${id}|${navigator.userAgent}|${screen.width}x${screen.height}|${canvasHash}`;
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(combined));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('').slice(0, 32);
+}
+
+// ===== LOAD DASHBOARD =====
 async function loadDashboard(user) {
   currentUser = user;
   const email = user.email;
   
-  let displayName = email.split('@')[0];
-  displayName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
+  let displayName = getFirstName(email.split('@')[0]);
 
   document.querySelector('.welcome-text').textContent = getGreeting() + ' 👋';
 
@@ -1922,6 +2178,7 @@ async function loadDashboard(user) {
   let courseKey = 'computer-science';
   let role = 'student';
   let department = '';
+  let photoURL = '';
   
   try {
     const snap = await getDoc(doc(db, 'users', user.uid));
@@ -1933,20 +2190,10 @@ async function loadDashboard(user) {
       department = data.department || 'Computer Science';
       userRole = role;
       userDepartment = department;
-      
-      if (data.photoURL) {
-        ['miniAvatar', 'profileAvatar', 'profileUploadPreview'].forEach(id => {
-          const el = $(id);
-          if (el) el.src = data.photoURL;
-        });
-      }
+      photoURL = data.photoURL || '';
       
       if (data.name) {
         displayName = getFirstName(data.name);
-        ['welcomeName', 'profileName', 'userName', 'fullName'].forEach(id => {
-          const el = $(id);
-          if (el) el.textContent = displayName;
-        });
       }
     }
   } catch(e) { 
@@ -1971,6 +2218,7 @@ async function loadDashboard(user) {
     if ($('profileRoleBadge')) $('profileRoleBadge').style.display = 'inline-block';
     
     document.querySelectorAll('.teacher-only').forEach(el => el.style.display = 'flex');
+    document.querySelectorAll('.student-only').forEach(el => el.style.display = 'none');
     
     $('welcomeBanner').className = 'welcome teacher-welcome';
     $('welcomeBanner').querySelector('h1').textContent = '👨‍🏫 Teacher Dashboard';
@@ -1984,8 +2232,6 @@ async function loadDashboard(user) {
     $('pendingCount').parentElement.querySelector('p').textContent = "Today's Classes";
     
     $('profileCourseDisplay').textContent = department;
-    const profileDepartmentEl = $('profileDepartment');
-    if (profileDepartmentEl) profileDepartmentEl.textContent = department;
     
   } else {
     if ($('userRoleDisplay')) $('userRoleDisplay').innerHTML = `🎯 Student <span class="course-badge" id="courseBadge">${courseLabel}</span>`;
@@ -1994,6 +2240,7 @@ async function loadDashboard(user) {
     if ($('profileRoleBadge')) $('profileRoleBadge').style.display = 'none';
     
     document.querySelectorAll('.teacher-only').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.student-only').forEach(el => el.style.display = 'flex');
     
     $('welcomeBanner').className = 'welcome';
     $('welcomeBanner').querySelector('h1').textContent = '📊 Your Dashboard';
@@ -2007,8 +2254,6 @@ async function loadDashboard(user) {
     $('pendingCount').parentElement.querySelector('p').textContent = 'Pending';
     
     $('profileCourseDisplay').textContent = courseLabel;
-    const profileDepartmentEl = $('profileDepartment');
-    if (profileDepartmentEl) profileDepartmentEl.textContent = courseLabel;
   }
 
   const courseEmoji = getCourseEmoji(courseKey);
@@ -2020,7 +2265,8 @@ async function loadDashboard(user) {
   const profileCourseBadge = $('profileCourseBadge');
   if (profileCourseBadge) profileCourseBadge.textContent = isTeacher ? `👨‍🏫 ${department}` : courseDisplay;
 
-  const avatarSrc = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Ccircle cx='100' cy='100' r='100' fill='%234f46e5'/%3E%3Ctext x='50%25' y='55%25' font-size='80' fill='white' font-family='Arial' text-anchor='middle' dominant-baseline='central'%3E${displayName.charAt(0)}%3C/text%3E%3C/svg%3E`;
+  // Avatar
+  const avatarSrc = photoURL || `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Ccircle cx='100' cy='100' r='100' fill='%234f46e5'/%3E%3Ctext x='50%25' y='55%25' font-size='80' fill='white' font-family='Arial' text-anchor='middle' dominant-baseline='central'%3E${displayName.charAt(0)}%3C/text%3E%3C/svg%3E`;
   ['miniAvatar', 'profileAvatar', 'profileUploadPreview'].forEach(id => {
     const el = $(id);
     if (el) el.src = avatarSrc;
@@ -2031,19 +2277,19 @@ async function loadDashboard(user) {
     $('joinedDate').textContent = d.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
   }
 
-  // HIDE LOGIN, SHOW DASHBOARD
   loginPage.style.display = 'none';
   signupPage.style.display = 'none';
   dashboardPage.style.display = 'block';
 
-  // Setup real-time listeners
   setupPresence(user);
   setupChatListener();
   setupTypingListener(user);
 
-  // NEW: Load students for teacher based on department
   if (isTeacher) {
     loadTeacherStudents(department);
+  } else {
+    // Student: watch for active attendance sessions in their course
+    watchActiveSessions(courseKey);
   }
   
   setInterval(() => {
@@ -2051,35 +2297,13 @@ async function loadDashboard(user) {
   }, 60000);
 }
 
-function getCourseEmoji(courseKey) {
-  const emojis = {
-    'computer-science': '🖥️',
-    'data-science': '📊',
-    'artificial-intelligence': '🤖',
-    'cybersecurity': '🔒',
-    'software-engineering': '⚡',
-    'information-technology': '💻',
-    'business-analytics': '📈',
-    'digital-media': '🎨',
-    'game-development': '🎮',
-    'cloud-computing': '☁️'
-  };
-  return emojis[courseKey] || '📚';
-}
-
-// ===== NEW: Load students for teacher (matched by course/department) =====
+// ===== TEACHER STUDENTS =====
 function loadTeacherStudents(department) {
-  // Cleanup previous listener
-  if (studentsUnsubscribe) {
-    studentsUnsubscribe();
-    studentsUnsubscribe = null;
-  }
-
+  if (studentsUnsubscribe) { studentsUnsubscribe(); studentsUnsubscribe = null; }
   const studentsList = $('studentsList');
   const totalCount = $('totalStudentsCount');
   if (!studentsList) return;
 
-  // Query students whose course matches the teacher's department key
   const q = query(
     collection(db, 'users'),
     where('role', '==', 'student'),
@@ -2098,7 +2322,6 @@ function loadTeacherStudents(department) {
       return;
     }
 
-    // Get online presence snapshot
     const presenceSnap = await new Promise(resolve => {
       onValue(dbRef(rtdb, 'presence'), resolve, { onlyOnce: true });
     });
@@ -2115,17 +2338,16 @@ function loadTeacherStudents(department) {
       const email = student.email || '';
       const isOnline = presenceData[uid] && presenceData[uid].online === true;
 
-      // Avatar: use photoURL if available, else first letter
       const avatarContent = student.photoURL 
-        ? `<img src="${student.photoURL}" alt="${name}">` 
-        : name.charAt(0).toUpperCase();
+        ? `<img src="${student.photoURL}" alt="${escapeHtml(name)}">` 
+        : escapeHtml(name.charAt(0).toUpperCase());
 
       html += `
         <div class="student-row-card" data-uid="${uid}">
           <div class="stu-avatar">${avatarContent}</div>
           <div class="stu-info">
-            <div class="stu-name">${name}</div>
-            <div class="stu-email">${email}</div>
+            <div class="stu-name">${escapeHtml(name)}</div>
+            <div class="stu-email">${escapeHtml(email)}</div>
           </div>
           <div class="stu-status ${isOnline ? 'online' : ''}" title="${isOnline ? 'Online' : 'Offline'}"></div>
         </div>
@@ -2139,29 +2361,6 @@ function loadTeacherStudents(department) {
     console.error('Students listener error:', err);
     studentsList.innerHTML = `<p style="color:#dc2626;text-align:center;padding:20px;">⚠️ Error loading students</p>`;
   });
-}
-
-function getDepartmentLabel(deptKey) {
-  const labels = {
-    'computer-science': 'Computer Science',
-    'data-science': 'Data Science',
-    'artificial-intelligence': 'Artificial Intelligence',
-    'cybersecurity': 'Cybersecurity',
-    'software-engineering': 'Software Engineering',
-    'information-technology': 'Information Technology',
-    'business-analytics': 'Business Analytics',
-    'digital-media': 'Digital Media',
-    'game-development': 'Game Development',
-    'cloud-computing': 'Cloud Computing',
-    'mathematics': 'Mathematics',
-    'physics': 'Physics',
-    'chemistry': 'Chemistry',
-    'biology': 'Biology',
-    'engineering': 'Engineering',
-    'business': 'Business',
-    'arts': 'Arts & Humanities'
-  };
-  return labels[deptKey] || deptKey;
 }
 
 // ===== AUTH STATE OBSERVER =====
@@ -2194,6 +2393,11 @@ onAuthStateChanged(auth, async user => {
       if (typingUnsubscribe) { typingUnsubscribe(); typingUnsubscribe = null; }
       if (presenceUnsubscribe) { presenceUnsubscribe(); presenceUnsubscribe = null; }
       if (studentsUnsubscribe) { studentsUnsubscribe(); studentsUnsubscribe = null; }
+      if (teacherSessionUnsub) { teacherSessionUnsub(); teacherSessionUnsub = null; }
+      if (checkinUnsub) { checkinUnsub(); checkinUnsub = null; }
+      if (studentSessionsUnsub) { studentSessionsUnsub(); studentSessionsUnsub = null; }
+      stopScanner();
+      stopRotatingQR();
       
       if (currentUser) {
         set(dbRef(rtdb, 'presence/' + currentUser.uid), null);
@@ -2263,7 +2467,6 @@ $('loginForm').addEventListener('submit', async e => {
 
   } catch (err) {
     console.error('Firebase login error:', err);
-
     let msg = 'Unable to sign in.';
     switch (err.code) {
       case 'auth/invalid-credential':
@@ -2371,7 +2574,6 @@ $('signupForm').addEventListener('submit', async e => {
     success.style.display = 'block';
     
     $('signupForm').reset();
-    
     await signOut(auth);
     
     setTimeout(() => {
@@ -2379,11 +2581,8 @@ $('signupForm').addEventListener('submit', async e => {
       loginPage.style.display = 'flex';
       $('loginEmail').value = email;
       
-      if (role === 'teacher') {
-        $('loginTeacherBtn').click();
-      } else {
-        $('loginStudentBtn').click();
-      }
+      if (role === 'teacher') $('loginTeacherBtn').click();
+      else $('loginStudentBtn').click();
     }, 1500);
     
   } catch (err) {
@@ -2569,7 +2768,8 @@ function setupPresence(user) {
         if (p && p.online === true) count++; 
       });
     }
-    $('onlineCount').textContent = `🟢 ${count} online`;
+    const el = $('onlineCount');
+    if (el) el.textContent = `🟢 ${count} online`;
   });
 }
 
@@ -2589,13 +2789,12 @@ function setupTypingListener(user) {
         const d = doc.data();
         if (d.typing && d.timestamp) {
           const ts = d.timestamp.toMillis ? d.timestamp.toMillis() : d.timestamp;
-          if (now - ts < 5000) {
-            typingUsers.push(d.name || 'Someone');
-          }
+          if (now - ts < 5000) typingUsers.push(d.name || 'Someone');
         }
       });
       
       const indicator = $('typingIndicator');
+      if (!indicator) return;
       if (typingUsers.length > 0) {
         const nameSpan = $('typingName');
         const names = typingUsers.slice(0, 2).join(', ');
@@ -2651,7 +2850,7 @@ function setupChatListener() {
   if (chatUnsubscribe) chatUnsubscribe();
   
   chatUnsubscribe = onSnapshot(
-    query(collection(db, 'messages'), orderBy('timestamp', 'asc')),
+    query(collection(db, 'messages'), orderBy('timestamp', 'asc'), limit(200)),
     snap => {
       const container = $('chatMessages');
       if (!container) return;
@@ -2673,10 +2872,10 @@ function setupChatListener() {
         
         html += `
           <div class="chat-msg ${isSelf ? 'self' : ''}">
-            <div class="avatar" style="background:${color}">${initial}</div>
+            <div class="avatar" style="background:${color}">${escapeHtml(initial)}</div>
             <div class="bubble">
-              <div class="name">${d.senderName || 'Anonymous'}</div>
-              <div class="text">${d.text || ''}</div>
+              <div class="name">${escapeHtml(d.senderName || 'Anonymous')}</div>
+              <div class="text">${escapeHtml(d.text || '')}</div>
               <span class="time">${timeStr}</span>
             </div>
           </div>
@@ -2702,10 +2901,7 @@ async function sendMessage() {
   btn.disabled = true;
   input.disabled = true;
   
-  if (typingTimeout) {
-    clearTimeout(typingTimeout);
-    typingTimeout = null;
-  }
+  if (typingTimeout) { clearTimeout(typingTimeout); typingTimeout = null; }
   await setTyping(false);
   
   try {
@@ -2758,52 +2954,488 @@ document.querySelectorAll('.nav-item:not(.logout-btn)').forEach(item => {
     const target = document.getElementById(`view-${view}`);
     if (target) {
       target.classList.add('active');
-      const titles = { 
-        dashboard: 'Dashboard',
-        profile: 'Profile',
-        courses: 'Courses',
-        grades: 'Grades',
-        messages: 'Messages',
-        chat: 'Live Chat',
-        attendance: 'Attendance',
-        students: 'Students'
-      };
-      const pageTitle = $('pageTitle');
-      if (pageTitle) pageTitle.textContent = titles[view] || 'Dashboard';
       if (view === 'chat') {
         setTimeout(() => {
           const container = $('chatMessages');
           if (container) container.scrollTop = container.scrollHeight;
         }, 100);
       }
+      if (view === 'checkin') {
+        updateGeoBadge();
+      }
     }
   });
 });
 
-// ===== ATTENDANCE (Teacher) =====
-$('startAttendanceBtn')?.addEventListener('click', function() {
+// ==================================================================
+// ==================== QR ATTENDANCE SYSTEM ========================
+// ==================================================================
+
+let teacherSessionUnsub = null;
+let checkinUnsub = null;
+let studentSessionsUnsub = null;
+let qrRotationInterval = null;
+let qrTimerInterval = null;
+let activeSessionId = null;
+let activeSessionSalt = null;
+let qrCountdownStart = 0;
+
+// ---------- TEACHER: START SESSION ----------
+$('startAttendanceBtn')?.addEventListener('click', async function() {
   const course = $('teacherCourseSelect').value;
   if (!course) {
-    alert('Please select a course first.');
+    showToast('Please select a course first.', 'error');
     return;
   }
-  $('attendanceSession').style.display = 'block';
-  $('checkInCount').textContent = '0';
-  $('liveCheckIns').innerHTML = '<p style="color:var(--text-muted);font-size:13px;">⏳ Waiting for students to check in...</p>';
-  $('qrCodePlaceholder').innerHTML = '📱<br><span style="font-size:14px;color:var(--text-muted);">QR Code Active</span>';
-  this.textContent = '🔄 Session Active';
+  
   this.disabled = true;
-  showToast('✅ Attendance session started!', 'success');
-});
-
-$('stopAttendanceBtn')?.addEventListener('click', function() {
-  if (confirm('End this attendance session?')) {
-    $('attendanceSession').style.display = 'none';
-    $('startAttendanceBtn').textContent = '▶️ Start Attendance Session';
-    $('startAttendanceBtn').disabled = false;
-    showToast('⏹️ Attendance session ended.', 'info');
+  this.innerHTML = '⏳ Getting location...';
+  
+  try {
+    // Get teacher's location → this becomes the class location
+    const pos = await getCurrentPosition();
+    const lat = pos.coords.latitude;
+    const lng = pos.coords.longitude;
+    
+    const sessionId = crypto.randomUUID();
+    const salt = crypto.randomUUID().slice(0, 16);
+    const expiresAt = Date.now() + 30 * 60 * 1000; // 30 minutes
+    
+    await setDoc(doc(db, 'attendanceSessions', sessionId), {
+      courseId: course,
+      teacherId: auth.currentUser.uid,
+      teacherName: $('userName')?.textContent || 'Teacher',
+      startedAt: serverTimestamp(),
+      createdAt: Date.now(),
+      expiresAt,
+      active: true,
+      location: { lat, lng },
+      radiusMeters: 40,
+      salt
+    });
+    
+    activeSessionId = sessionId;
+    activeSessionSalt = salt;
+    
+    $('attendanceSession').style.display = 'block';
+    $('checkInCount').textContent = '0';
+    $('liveCheckIns').innerHTML = '<p style="color:var(--text-muted);font-size:13px;">⏳ Waiting for students to check in...</p>';
+    $('sessionStatus').textContent = 'Live';
+    $('sessionStatus').className = 'session-status live';
+    
+    this.innerHTML = '🔄 Session Active';
+    
+    // Start rotating QR
+    startRotatingQR(sessionId, salt);
+    
+    // Listen to check-ins
+    listenToCheckins(sessionId);
+    
+    // Auto-expire
+    setTimeout(() => {
+      if (activeSessionId === sessionId) stopAttendanceSession();
+    }, 30 * 60 * 1000);
+    
+    showToast('✅ Attendance session started! QR refreshing every 8s.', 'success');
+    
+  } catch (err) {
+    console.error('Start attendance error:', err);
+    let msg = 'Failed to start session.';
+    if (err.code === 1) msg = 'Location permission denied. Please allow location access.';
+    else if (err.code === 2) msg = 'Location unavailable. Check your GPS.';
+    else if (err.code === 3) msg = 'Location request timed out. Try again.';
+    showToast('❌ ' + msg, 'error');
+    this.disabled = false;
+    this.innerHTML = '▶️ Start Attendance Session';
   }
 });
+
+// ---------- TEACHER: ROTATING QR ----------
+async function startRotatingQR(sessionId, salt) {
+  stopRotatingQR();
+  
+  const rotate = async () => {
+    if (activeSessionId !== sessionId) return;
+    
+    const ts = Math.floor(Date.now() / 1000);
+    const token = await generateSessionToken(sessionId, ts, salt);
+    
+    // Compact payload students can parse
+    const payload = JSON.stringify({
+      s: sessionId,
+      t: token,
+      x: ts
+    });
+    
+    const holder = $('qrCodePlaceholder');
+    holder.innerHTML = '';
+    
+    try {
+      const canvas = document.createElement('canvas');
+      await QRCode.toCanvas(canvas, payload, {
+        width: 220,
+        margin: 1,
+        errorCorrectionLevel: 'M',
+        color: { dark: '#1a1a2e', light: '#ffffff' }
+      });
+      holder.appendChild(canvas);
+    } catch(e) {
+      holder.textContent = '❌ QR error';
+      console.error('QR gen:', e);
+    }
+    
+    qrCountdownStart = Date.now();
+    updateQrCountdown();
+  };
+  
+  await rotate();
+  qrRotationInterval = setInterval(rotate, 8000);
+  
+  // Smooth countdown bar
+  qrTimerInterval = setInterval(updateQrCountdown, 100);
+}
+
+function updateQrCountdown() {
+  const elapsed = Date.now() - qrCountdownStart;
+  const total = 8000;
+  const remaining = Math.max(0, total - elapsed);
+  const pct = (remaining / total) * 100;
+  
+  const bar = $('qrTimerBar')?.querySelector('.fill');
+  if (bar) bar.style.width = pct + '%';
+  
+  const timerText = $('qrTimer');
+  if (timerText) {
+    const secs = (remaining / 1000).toFixed(1);
+    timerText.textContent = `⏳ Refreshes in ${secs}s`;
+  }
+}
+
+function stopRotatingQR() {
+  if (qrRotationInterval) { clearInterval(qrRotationInterval); qrRotationInterval = null; }
+  if (qrTimerInterval) { clearInterval(qrTimerInterval); qrTimerInterval = null; }
+}
+
+// ---------- TEACHER: LISTEN TO CHECK-INS ----------
+function listenToCheckins(sessionId) {
+  if (checkinUnsub) checkinUnsub();
+  
+  checkinUnsub = onSnapshot(
+    collection(db, 'attendanceSessions', sessionId, 'checkins'),
+    snap => {
+      const count = snap.size;
+      $('checkInCount').textContent = String(count);
+      
+      if (snap.empty) {
+        $('liveCheckIns').innerHTML = '<p style="color:var(--text-muted);font-size:13px;">⏳ Waiting for students...</p>';
+        return;
+      }
+      
+      let html = '';
+      snap.forEach(d => {
+        const data = d.data();
+        const initial = (data.name || '?').charAt(0).toUpperCase();
+        const timeStr = data.at?.toDate
+          ? data.at.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          : 'now';
+        const dist = data.distanceFromClass != null ? `${data.distanceFromClass}m` : '—';
+        
+        html += `
+          <div class="student-row-card" style="padding:10px 14px;margin-bottom:6px;">
+            <div class="stu-avatar" style="width:36px;height:36px;font-size:14px;">${escapeHtml(initial)}</div>
+            <div class="stu-info">
+              <div class="stu-name">${escapeHtml(data.name || 'Student')}</div>
+              <div class="stu-email">✅ ${timeStr} • ${dist} from class</div>
+            </div>
+          </div>
+        `;
+      });
+      
+      // Newest first
+      $('liveCheckIns').innerHTML = html;
+    },
+    err => {
+      console.error('Check-ins listener:', err);
+    }
+  );
+}
+
+// ---------- TEACHER: STOP SESSION ----------
+$('stopAttendanceBtn')?.addEventListener('click', function() {
+  if (!confirm('End this attendance session? Students will no longer be able to check in.')) return;
+  stopAttendanceSession();
+});
+
+async function stopAttendanceSession() {
+  if (activeSessionId) {
+    try {
+      await updateDoc(doc(db, 'attendanceSessions', activeSessionId), { active: false });
+    } catch(e) { console.warn('Session update:', e); }
+  }
+  
+  stopRotatingQR();
+  if (checkinUnsub) { checkinUnsub(); checkinUnsub = null; }
+  
+  activeSessionId = null;
+  activeSessionSalt = null;
+  
+  $('attendanceSession').style.display = 'none';
+  $('startAttendanceBtn').innerHTML = '▶️ Start Attendance Session';
+  $('startAttendanceBtn').disabled = false;
+  $('qrCodePlaceholder').innerHTML = '⏳';
+  
+  showToast('⏹️ Attendance session ended.', 'info');
+}
+
+// ---------- STUDENT: WATCH ACTIVE SESSIONS ----------
+function watchActiveSessions(courseKey) {
+  if (studentSessionsUnsub) studentSessionsUnsub();
+  
+  const q = query(
+    collection(db, 'attendanceSessions'),
+    where('courseId', '==', courseKey),
+    where('active', '==', true)
+  );
+  
+  studentSessionsUnsub = onSnapshot(q, snap => {
+    const checkinNavBtn = document.querySelector('.nav-item.student-only[data-view="checkin"]');
+    if (!checkinNavBtn) return;
+    
+    let hasActive = false;
+    snap.forEach(d => {
+      const s = d.data();
+      if (s.expiresAt > Date.now()) hasActive = true;
+    });
+    
+    if (hasActive) {
+      checkinNavBtn.innerHTML = '<span class="icon">📷</span><span class="label">Check In <span style="display:inline-block;width:8px;height:8px;background:#22c55e;border-radius:50%;margin-left:4px;animation:pulse-dot 1.5s infinite;"></span></span>';
+    } else {
+      checkinNavBtn.innerHTML = '<span class="icon">📷</span><span class="label">Check In</span>';
+    }
+  });
+}
+
+// ---------- STUDENT: GEO BADGE ----------
+async function updateGeoBadge() {
+  const badge = $('geoBadge');
+  if (!badge) return;
+  badge.className = 'geo-badge';
+  badge.textContent = '📍 Location: checking...';
+  
+  try {
+    const pos = await getCurrentPosition();
+    badge.className = 'geo-badge ok';
+    badge.textContent = `📍 Location ready (${pos.coords.accuracy.toFixed(0)}m accuracy)`;
+  } catch (err) {
+    badge.className = 'geo-badge bad';
+    badge.textContent = '📍 Location unavailable — enable GPS';
+  }
+}
+
+// ---------- STUDENT: CAMERA SCANNER ----------
+let scannerStream = null;
+let scanRafId = null;
+let jsQRLoaded = false;
+
+async function loadJsQR() {
+  if (jsQRLoaded || window.jsQR) { jsQRLoaded = true; return; }
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js';
+    s.onload = () => { jsQRLoaded = true; resolve(); };
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+
+$('startScannerBtn')?.addEventListener('click', startScanner);
+$('stopScannerBtn')?.addEventListener('click', stopScanner);
+
+async function startScanner() {
+  $('checkinIdle').style.display = 'none';
+  $('checkinScanner').style.display = 'block';
+  
+  try {
+    await loadJsQR();
+    
+    scannerStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment' }
+    });
+    
+    const video = $('scannerVideo');
+    video.srcObject = scannerStream;
+    await video.play();
+    
+    const scanLoop = () => {
+      if (!scannerStream) return;
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      
+      if (window.jsQR) {
+        const code = window.jsQR(imageData.data, imageData.width, imageData.height, {
+          inversionAttempts: 'dontInvert'
+        });
+        if (code && code.data) {
+          handleScannedData(code.data);
+          return; // stop loop after successful decode
+        }
+      }
+      scanRafId = requestAnimationFrame(scanLoop);
+    };
+    scanLoop();
+    
+    setCheckinStatus('Point your camera at the teacher\'s QR code', 'info');
+  } catch (err) {
+    console.error('Camera error:', err);
+    setCheckinStatus('❌ Camera access denied or unavailable. Use manual code entry.', 'error');
+    stopScanner();
+    $('checkinIdle').style.display = 'block';
+  }
+}
+
+function stopScanner() {
+  if (scanRafId) { cancelAnimationFrame(scanRafId); scanRafId = null; }
+  if (scannerStream) {
+    scannerStream.getTracks().forEach(t => t.stop());
+    scannerStream = null;
+  }
+  const video = $('scannerVideo');
+  if (video) video.srcObject = null;
+  $('checkinScanner').style.display = 'none';
+  $('checkinIdle').style.display = 'block';
+}
+
+// ---------- STUDENT: HANDLE SCANNED DATA ----------
+async function handleScannedData(raw) {
+  let payload;
+  try {
+    payload = JSON.parse(raw);
+  } catch(e) {
+    setCheckinStatus('❌ Invalid QR. Make sure you scanned the teacher\'s code.', 'error');
+    return;
+  }
+  
+  const { s: sessionId, t: token, x: ts } = payload;
+  if (!sessionId || !token || !ts) {
+    setCheckinStatus('❌ Malformed QR code.', 'error');
+    return;
+  }
+  
+  stopScanner();
+  await verifyAndCheckIn(sessionId, token, ts);
+}
+
+// ---------- STUDENT: MANUAL CODE ----------
+$('manualCodeBtn')?.addEventListener('click', async () => {
+  const raw = $('manualCodeInput').value.trim();
+  if (!raw) return;
+  await handleScannedData(raw);
+});
+
+// ---------- CORE: VERIFY & CHECK-IN ----------
+async function verifyAndCheckIn(sessionId, token, ts) {
+  setCheckinStatus('🔍 Verifying...', 'info');
+  
+  try {
+    // 1. Time freshness
+    const now = Math.floor(Date.now() / 1000);
+    if (Math.abs(now - ts) > 20) {
+      throw new Error('QR code expired. Ask your teacher to show the current one.');
+    }
+    
+    // 2. Load session
+    const sessionSnap = await getDoc(doc(db, 'attendanceSessions', sessionId));
+    if (!sessionSnap.exists()) throw new Error('Session not found.');
+    const session = sessionSnap.data();
+    
+    if (!session.active) throw new Error('This attendance session has ended.');
+    if (session.expiresAt < Date.now()) throw new Error('Session expired.');
+    
+    // 3. Verify HMAC token matches
+    const expectedToken = await generateSessionToken(sessionId, ts, session.salt);
+    if (expectedToken !== token) throw new Error('Invalid or outdated QR code.');
+    
+    // 4. Get student location
+    setCheckinStatus('📍 Checking your location...', 'info');
+    let pos;
+    try {
+      pos = await getCurrentPosition();
+    } catch (geoErr) {
+      throw new Error('Location permission required. Enable GPS and try again.');
+    }
+    
+    // 5. Distance check
+    const dist = distanceMeters(
+      pos.coords.latitude, pos.coords.longitude,
+      session.location.lat, session.location.lng
+    );
+    
+    if (dist > session.radiusMeters) {
+      throw new Error(`You are ${Math.round(dist)}m away. Move closer (within ${session.radiusMeters}m).`);
+    }
+    
+    // 6. Device fingerprint — one device can't check in multiple students
+    const deviceId = await getDeviceFingerprint();
+    const existingSnap = await new Promise((resolve, reject) => {
+      const q = query(
+        collection(db, 'attendanceSessions', sessionId, 'checkins'),
+        where('deviceId', '==', deviceId)
+      );
+      onSnapshot(q, resolve, reject, { onlyOnce: true });
+    });
+    
+    let conflict = false;
+    existingSnap.forEach(d => {
+      if (d.id !== auth.currentUser.uid) conflict = true;
+    });
+    if (conflict) throw new Error('This device has already checked in another student.');
+    
+    // 7. Write check-in
+    const userSnap = await getDoc(doc(db, 'users', auth.currentUser.uid));
+    const studentName = userSnap.exists() && userSnap.data().name
+      ? getFirstName(userSnap.data().name)
+      : (auth.currentUser.email || '').split('@')[0];
+    
+    await setDoc(
+      doc(db, 'attendanceSessions', sessionId, 'checkins', auth.currentUser.uid),
+      {
+        studentId: auth.currentUser.uid,
+        name: studentName,
+        email: auth.currentUser.email || '',
+        at: serverTimestamp(),
+        deviceId,
+        distanceFromClass: Math.round(dist),
+        location: {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude
+        }
+      }
+    );
+    
+    setCheckinStatus(`✅ Checked in successfully! You were ${Math.round(dist)}m from class.`, 'success');
+    showToast('✅ Attendance recorded!', 'success');
+    
+  } catch (err) {
+    console.error('Check-in error:', err);
+    setCheckinStatus('❌ ' + (err.message || 'Check-in failed.'), 'error');
+    showToast('❌ ' + (err.message || 'Check-in failed.'), 'error');
+  }
+}
+
+function setCheckinStatus(msg, type) {
+  const el = $('checkinStatus');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = 'checkin-status ' + type;
+  el.style.display = 'block';
+}
+
+// ==================================================================
+// ==================================================================
 
 // ===== CUSTOM LOGOUT =====
 $('logoutBtn')?.addEventListener('click', function(e) {
@@ -2816,40 +3448,37 @@ $('cancelLogoutBtn')?.addEventListener('click', function() {
 });
 
 logoutModal?.addEventListener('click', function(e) {
-  if (e.target === this) {
-    this.style.display = 'none';
-  }
+  if (e.target === this) this.style.display = 'none';
 });
 
 $('confirmLogoutBtn')?.addEventListener('click', async function() {
   logoutModal.style.display = 'none';
   
-  if (typingTimeout) {
-    clearTimeout(typingTimeout);
-    typingTimeout = null;
-  }
+  if (typingTimeout) { clearTimeout(typingTimeout); typingTimeout = null; }
   await setTyping(false);
+  
+  // Cleanup QR attendance
+  stopRotatingQR();
+  stopScanner();
+  if (checkinUnsub) { checkinUnsub(); checkinUnsub = null; }
+  if (studentSessionsUnsub) { studentSessionsUnsub(); studentSessionsUnsub = null; }
+  
+  // End any active session owned by this teacher
+  if (activeSessionId) {
+    try {
+      await updateDoc(doc(db, 'attendanceSessions', activeSessionId), { active: false });
+    } catch(e) {}
+    activeSessionId = null;
+  }
   
   if (currentUser) {
     set(dbRef(rtdb, 'presence/' + currentUser.uid), null);
   }
   
-  if (chatUnsubscribe) {
-    chatUnsubscribe();
-    chatUnsubscribe = null;
-  }
-  if (typingUnsubscribe) {
-    typingUnsubscribe();
-    typingUnsubscribe = null;
-  }
-  if (presenceUnsubscribe) {
-    presenceUnsubscribe();
-    presenceUnsubscribe = null;
-  }
-  if (studentsUnsubscribe) {
-    studentsUnsubscribe();
-    studentsUnsubscribe = null;
-  }
+  if (chatUnsubscribe) { chatUnsubscribe(); chatUnsubscribe = null; }
+  if (typingUnsubscribe) { typingUnsubscribe(); typingUnsubscribe = null; }
+  if (presenceUnsubscribe) { presenceUnsubscribe(); presenceUnsubscribe = null; }
+  if (studentsUnsubscribe) { studentsUnsubscribe(); studentsUnsubscribe = null; }
   
   await signOut(auth);
   showToast('👋 Logged out successfully.', 'info');
@@ -2880,6 +3509,7 @@ $('signupPassword')?.addEventListener('input', function() {
 });
 
 console.log('🎓 Student Hub loaded successfully!');
+console.log('🔒 Secure QR Attendance System active.');
 </script>
 </body>
 </html>
