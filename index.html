@@ -4,210 +4,384 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Student Hub</title>
-
-<!-- ===== FAVICON EMOJI ===== -->
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎓</text></svg>">
-
 <style>
-/* ===== CSS ===== */
-:root {
-  /* Light Theme */
-  --bg-primary: #f0f4ff;
-  --bg-card: rgba(255,255,255,0.75);
-  --bg-card-hover: rgba(255,255,255,0.95);
-  --text-primary: #1a1a2e;
-  --text-secondary: #4a4a6a;
-  --text-muted: #8a8aaa;
-  --border-light: rgba(0,0,0,0.06);
-  --shadow-sm: 0 4px 20px rgba(0,0,0,0.04);
-  --shadow-md: 0 8px 40px rgba(0,0,0,0.08);
-  --shadow-lg: 0 20px 60px rgba(0,0,0,0.12);
-  --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  --gradient-accent: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-  --gradient-warm: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
-  --glass-bg: rgba(255,255,255,0.5);
-  --glass-border: rgba(255,255,255,0.2);
-  --radius: 20px;
-  --radius-sm: 12px;
-  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-[data-theme="dark"] {
-  --bg-primary: #0f0f1a;
-  --bg-card: rgba(30,30,50,0.75);
-  --bg-card-hover: rgba(40,40,65,0.95);
-  --text-primary: #e8e8f0;
-  --text-secondary: #b0b0c8;
-  --text-muted: #707090;
-  --border-light: rgba(255,255,255,0.06);
-  --shadow-sm: 0 4px 20px rgba(0,0,0,0.3);
-  --shadow-md: 0 8px 40px rgba(0,0,0,0.4);
-  --shadow-lg: 0 20px 60px rgba(0,0,0,0.5);
-  --glass-bg: rgba(30,30,50,0.5);
-  --glass-border: rgba(255,255,255,0.05);
-}
-
+/* ===== RESET & BASE ===== */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
+:root {
+  --bg: #f5f7fa;
+  --surface: #ffffff;
+  --surface-hover: #f0f2f5;
+  --text-primary: #1a1a2e;
+  --text-secondary: #4a4a6a;
+  --text-muted: #8a8aaa;
+  --border: #e8ecf1;
+  --shadow: 0 2px 12px rgba(0,0,0,0.06);
+  --shadow-hover: 0 8px 30px rgba(0,0,0,0.1);
+  --radius: 12px;
+  --radius-sm: 8px;
+  --primary: #4f46e5;
+  --primary-light: #818cf8;
+  --primary-dark: #4338ca;
+  --gradient: linear-gradient(135deg, #4f46e5, #7c3aed);
+  --teacher-gradient: linear-gradient(135deg, #f59e0b, #ef4444);
+  --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --glow-color: rgba(79, 70, 229, 0.08);
+}
+
+[data-theme="dark"] {
+  --bg: #0f0f1a;
+  --surface: #1a1a2e;
+  --surface-hover: #252540;
+  --text-primary: #e8e8f0;
+  --text-secondary: #b0b0c8;
+  --text-muted: #707090;
+  --border: #2a2a44;
+  --shadow: 0 2px 12px rgba(0,0,0,0.3);
+  --shadow-hover: 0 8px 30px rgba(0,0,0,0.5);
+  --glow-color: rgba(79, 70, 229, 0.12);
+}
+
+html { font-size: 16px; }
 body {
-  background: var(--bg-primary);
-  min-height: 100vh;
-  transition: background 0.4s ease;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  background: var(--bg);
   color: var(--text-primary);
+  min-height: 100vh;
+  transition: background 0.3s ease, color 0.3s ease;
+  line-height: 1.6;
+  overflow-x: hidden;
 }
 
 /* ===== SCROLLBAR ===== */
-::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #667eea; border-radius: 10px; }
+::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 10px; }
 
-/* ===== LOADING SCREEN ===== */
+/* ===== LOADING ===== */
 #loadingScreen {
   position: fixed;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg-primary);
+  background: var(--bg);
   z-index: 9999;
-  transition: opacity 0.6s ease;
+  transition: opacity 0.4s ease;
 }
-.loader-ring {
-  width: 60px;
-  height: 60px;
+.loader {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border);
+  border-top-color: var(--primary);
   border-radius: 50%;
-  border: 3px solid rgba(102, 126, 234, 0.15);
-  border-top-color: #667eea;
-  animation: spin 0.8s linear infinite;
+  animation: spin 0.6s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ===== GLASS CARD ===== */
-.glass {
-  background: var(--glass-bg);
-  backdrop-filter: blur(20px) saturate(1.4);
-  -webkit-backdrop-filter: blur(20px) saturate(1.4);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-sm);
-  transition: var(--transition);
-}
-.glass:hover {
-  box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
+/* ===== AESTHETIC ANIMATED GLOW BACKGROUND ===== */
+.glow-container {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
 }
 
-/* ===== AUTH PAGES ===== */
+/* ===== ISOMETRIC DOT MATRIX ===== */
+.isometric-matrix {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(var(--text-muted) 1.2px, transparent 1.2px);
+  background-size: 32px 32px;
+  opacity: 0.18;
+  mask-image: radial-gradient(ellipse 75% 65% at 50% 40%, black 20%, transparent 80%);
+  -webkit-mask-image: radial-gradient(ellipse 75% 65% at 50% 40%, black 20%, transparent 80%);
+  animation: matrixDrift 28s linear infinite;
+  z-index: 1;
+}
+
+[data-theme="dark"] .isometric-matrix {
+  opacity: 0.22;
+  background-image: radial-gradient(var(--primary-light) 1.2px, transparent 1.2px);
+}
+
+@keyframes matrixDrift {
+  0% { background-position: 0 0; }
+  100% { background-position: 32px 64px; }
+}
+
+.mesh-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  will-change: transform;
+  pointer-events: none;
+}
+
+.mesh-orb-1 {
+  width: 520px;
+  height: 520px;
+  background: radial-gradient(circle, rgba(79, 70, 229, 0.18) 0%, transparent 70%);
+  top: -120px;
+  left: -100px;
+  animation: floatOrb1 20s ease-in-out infinite alternate;
+}
+
+.mesh-orb-2 {
+  width: 480px;
+  height: 480px;
+  background: radial-gradient(circle, rgba(124, 58, 237, 0.16) 0%, transparent 70%);
+  bottom: -100px;
+  right: -80px;
+  animation: floatOrb2 24s ease-in-out infinite alternate;
+}
+
+.mesh-orb-3 {
+  width: 380px;
+  height: 380px;
+  background: radial-gradient(circle, rgba(6, 182, 212, 0.12) 0%, transparent 70%);
+  top: 35%;
+  left: 45%;
+  animation: floatOrb3 18s ease-in-out infinite alternate;
+}
+
+[data-theme="dark"] .mesh-orb-1 {
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.22) 0%, transparent 70%);
+}
+[data-theme="dark"] .mesh-orb-2 {
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.18) 0%, transparent 70%);
+}
+[data-theme="dark"] .mesh-orb-3 {
+  background: radial-gradient(circle, rgba(14, 165, 233, 0.15) 0%, transparent 70%);
+}
+
+@keyframes floatOrb1 {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(120px, 80px) scale(1.1); }
+  100% { transform: translate(50px, 140px) scale(0.95); }
+}
+
+@keyframes floatOrb2 {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-100px, -90px) scale(1.15); }
+  100% { transform: translate(-60px, -40px) scale(0.9); }
+}
+
+@keyframes floatOrb3 {
+  0% { transform: translate(-50%, -50%) scale(1); }
+  50% { transform: translate(-30%, -65%) scale(1.2); }
+  100% { transform: translate(-70%, -35%) scale(0.9); }
+}
+
+.glow-blob {
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--glow-color) 0%, transparent 70%);
+  transform: translate(-50%, -50%);
+  transition: all 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  will-change: transform, opacity;
+  filter: blur(50px);
+  opacity: 0;
+}
+
+.glow-blob.active { opacity: 1; }
+
+.glow-blob-secondary {
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(124, 58, 237, 0.08) 0%, transparent 70%);
+  transform: translate(-50%, -50%);
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  will-change: transform;
+  filter: blur(60px);
+  pointer-events: none;
+}
+
+/* ===== BUTTONS ===== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  text-decoration: none;
+  background: var(--surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+}
+.btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-hover); }
+.btn-primary {
+  background: var(--gradient);
+  color: #fff;
+  border: none;
+}
+.btn-primary:hover { box-shadow: 0 4px 20px rgba(79, 70, 229, 0.35); transform: translateY(-1px); }
+.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+.btn-sm { padding: 6px 16px; font-size: 13px; }
+.btn-teacher {
+  background: var(--teacher-gradient);
+  color: #fff;
+  border: none;
+}
+.btn-teacher:hover { box-shadow: 0 4px 20px rgba(245, 158, 11, 0.35); transform: translateY(-1px); }
+
+/* ===== ROLE TOGGLE ===== */
+.role-toggle {
+  display: flex;
+  gap: 4px;
+  background: var(--bg);
+  border-radius: 50px;
+  padding: 4px;
+  margin-bottom: 24px;
+  border: 1px solid var(--border);
+}
+
+.role-toggle-btn {
+  padding: 8px 20px;
+  border: none;
+  border-radius: 50px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  background: transparent;
+  color: var(--text-secondary);
+  flex: 1;
+}
+
+.role-toggle-btn:hover {
+  color: var(--text-primary);
+}
+
+.role-toggle-btn.active-student {
+  background: var(--gradient);
+  color: #fff;
+  box-shadow: 0 2px 12px rgba(79, 70, 229, 0.25);
+}
+
+.role-toggle-btn.active-teacher {
+  background: var(--teacher-gradient);
+  color: #fff;
+  box-shadow: 0 2px 12px rgba(245, 158, 11, 0.25);
+}
+
+/* ===== LOGIN / SIGNUP ===== */
 #loginPage, #signupPage {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: 24px;
+  position: relative;
+  z-index: 1;
 }
 #signupPage { display: none; }
 
-.login-card {
+.auth-card {
   width: 100%;
   max-width: 400px;
-  padding: 48px 40px;
-  background: var(--glass-bg);
-  backdrop-filter: blur(24px) saturate(1.6);
-  -webkit-backdrop-filter: blur(24px) saturate(1.6);
-  border: 1px solid var(--glass-border);
-  border-radius: 24px;
-  box-shadow: var(--shadow-lg);
-  animation: fadeUp 0.6s ease;
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 40px 36px;
+  box-shadow: var(--shadow-hover);
+  border: 1px solid var(--border);
+  transition: var(--transition);
+  animation: fadeUp 0.5s ease;
+  position: relative;
+  z-index: 2;
+  backdrop-filter: blur(10px);
 }
 @keyframes fadeUp {
-  from { opacity: 0; transform: translateY(30px) scale(0.97); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.theme-toggle {
-  position: absolute;
-  top: 18px;
-  right: 18px;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  border: none;
-  background: var(--glass-bg);
-  backdrop-filter: blur(12px);
-  font-size: 18px;
-  cursor: pointer;
-  transition: var(--transition);
-  color: var(--text-primary);
-}
-.theme-toggle:hover { transform: rotate(30deg) scale(1.1); }
-
-.login-card .avatar-wrap {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 24px;
-}
-.login-card .avatar-wrap img {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 3px solid rgba(102, 126, 234, 0.3);
-  padding: 3px;
-  background: var(--bg-card);
-}
-
-.login-card h1 {
-  font-size: 26px;
+.auth-card .logo-wrap { text-align: center; margin-bottom: 20px; }
+.auth-card .logo-wrap h1 {
+  font-size: 24px;
   font-weight: 700;
-  text-align: center;
-  background: var(--gradient-primary);
+  background: var(--gradient);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
-.login-card .subtitle {
-  text-align: center;
-  color: var(--text-secondary);
-  font-size: 14px;
-  margin-bottom: 28px;
-}
+.auth-card .logo-wrap p { color: var(--text-secondary); font-size: 14px; margin-top: 4px; }
 
-.form-group {
-  margin-bottom: 18px;
+.auth-card .theme-toggle {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  transition: var(--transition);
+  color: var(--text-secondary);
+  z-index: 3;
 }
+.auth-card .theme-toggle:hover { background: var(--surface-hover); }
+
+.form-group { margin-bottom: 18px; }
 .form-group label {
   display: block;
   font-size: 13px;
   font-weight: 600;
-  margin-bottom: 6px;
   color: var(--text-secondary);
+  margin-bottom: 5px;
 }
-.form-group input {
+.form-group input,
+.form-group select {
   width: 100%;
-  padding: 14px 16px;
-  border: 2px solid var(--border-light);
+  padding: 11px 14px;
+  border: 1.5px solid var(--border);
   border-radius: var(--radius-sm);
   font-size: 14px;
-  outline: none;
-  background: var(--glass-bg);
-  backdrop-filter: blur(8px);
+  background: var(--bg);
   color: var(--text-primary);
   transition: var(--transition);
+  outline: none;
 }
-.form-group input:focus {
-  border-color: #667eea;
-  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.12);
+.form-group select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  cursor: pointer;
 }
+.form-group select option {
+  padding: 8px;
+  background: var(--surface);
+  color: var(--text-primary);
+}
+.form-group input:focus,
+.form-group select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+.form-group input::placeholder { color: var(--text-muted); }
 
-.password-box { position: relative; }
-.password-box input { padding-right: 48px; }
-.show-password {
+.password-wrapper { position: relative; }
+.password-wrapper input { padding-right: 44px; }
+.password-wrapper .toggle-pw {
   position: absolute;
-  right: 14px;
+  right: 12px;
   top: 50%;
   transform: translateY(-50%);
   background: none;
@@ -215,7 +389,7 @@ body {
   font-size: 18px;
   cursor: pointer;
   color: var(--text-muted);
-  transition: var(--transition);
+  padding: 4px;
 }
 
 .options-row {
@@ -223,694 +397,1217 @@ body {
   justify-content: space-between;
   align-items: center;
   font-size: 13px;
-  margin-bottom: 24px;
+  margin: 16px 0 22px;
 }
-.options-row a {
-  color: #667eea;
-  text-decoration: none;
-  font-weight: 500;
-  transition: var(--transition);
-}
-.options-row a:hover { color: #764ba2; }
+.options-row a { color: var(--primary); text-decoration: none; font-weight: 500; }
+.options-row a:hover { text-decoration: underline; }
 
-.custom-checkbox {
+.checkbox-label {
   display: flex;
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  user-select: none;
-}
-.custom-checkbox input {
-  position: absolute;
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-.checkmark {
-  width: 20px;
-  height: 20px;
-  border: 2px solid var(--border-light);
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: var(--transition);
-  background: var(--glass-bg);
-}
-.custom-checkbox input:checked ~ .checkmark {
-  background: var(--gradient-primary);
-  border-color: #667eea;
-}
-.checkmark::after {
-  content: '✓';
-  color: white;
-  font-size: 14px;
-  opacity: 0;
-  transform: scale(0);
-  transition: var(--transition);
-}
-.custom-checkbox input:checked ~ .checkmark::after {
-  opacity: 1;
-  transform: scale(1);
-}
-
-.login-btn {
-  width: 100%;
-  padding: 14px;
-  border: none;
-  border-radius: var(--radius-sm);
-  font-size: 15px;
-  font-weight: 600;
-  color: white;
-  background: var(--gradient-primary);
-  cursor: pointer;
-  transition: var(--transition);
-  position: relative;
-  overflow: hidden;
-}
-.login-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 30px rgba(102, 126, 234, 0.35);
-}
-.login-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-
-.signup-text {
-  text-align: center;
-  margin-top: 20px;
-  font-size: 13px;
   color: var(--text-secondary);
 }
-.signup-text a {
-  color: #667eea;
-  text-decoration: none;
-  font-weight: 500;
+.checkbox-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
+  cursor: pointer;
 }
 
-.error-message, .success-message {
+.auth-link {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+.auth-link a { color: var(--primary); text-decoration: none; font-weight: 600; }
+.auth-link a:hover { text-decoration: underline; }
+
+.error-msg, .success-msg {
   display: none;
-  padding: 12px 16px;
+  padding: 10px 14px;
   border-radius: var(--radius-sm);
-  margin-bottom: 16px;
   font-size: 13px;
+  margin-bottom: 16px;
 }
-.error-message {
-  background: rgba(245, 87, 108, 0.12);
-  color: #f5576c;
-}
-.success-message {
-  background: rgba(102, 126, 234, 0.12);
-  color: #667eea;
-}
+.error-msg { background: #fef2f2; color: #dc2626; }
+.success-msg { background: #f0fdf4; color: #16a34a; }
+[data-theme="dark"] .error-msg { background: #2a1515; color: #f87171; }
+[data-theme="dark"] .success-msg { background: #152a1a; color: #4ade80; }
 
-/* ============================================
-   DASHBOARD - AESTHETIC REDESIGN
-   ============================================ */
-
-#dashboardPage {
+/* ===== FORGOT PASSWORD MODAL ===== */
+#forgotModal {
   display: none;
-  min-height: 100vh;
-  background: var(--bg-primary);
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+#forgotModal .auth-card { max-width: 380px; }
+#forgotModal .close-modal {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: none;
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+  color: var(--text-muted);
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: var(--transition);
+}
+#forgotModal .close-modal:hover { background: var(--surface-hover); }
+
+/* ===== TEACHER BADGE ===== */
+.teacher-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--teacher-gradient);
+  color: #fff;
+  padding: 2px 10px;
+  border-radius: 50px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-left: 6px;
 }
 
-/* ---- Sidebar ---- */
-.sidebar {
-  width: 240px;
-  background: var(--glass-bg);
-  backdrop-filter: blur(24px) saturate(1.4);
-  -webkit-backdrop-filter: blur(24px) saturate(1.4);
-  border-right: 1px solid var(--glass-border);
-  padding: 28px 16px;
+/* ===== TOAST ===== */
+.toast-container {
   position: fixed;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  transition: var(--transition);
-  z-index: 100;
+  top: 20px;
+  right: 20px;
+  z-index: 10000;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 24px;
+  box-shadow: var(--shadow-hover);
+  animation: slideIn 0.3s ease;
+  max-width: 400px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-left: 4px solid var(--primary);
+}
+.toast-container.success { border-left-color: #22c55e; }
+.toast-container.error { border-left-color: #ef4444; }
+.toast-container.info { border-left-color: #3b82f6; }
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(100px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* ===== CUSTOM LOGOUT MODAL ===== */
+#logoutModal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(8px);
+  z-index: 9999;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: fadeIn 0.3s ease;
+}
+#logoutModal .auth-card {
+  max-width: 380px;
+  text-align: center;
+  animation: scaleIn 0.3s ease;
+}
+#logoutModal .auth-card .modal-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+#logoutModal .auth-card h2 {
+  margin-bottom: 8px;
+  font-size: 22px;
+}
+#logoutModal .auth-card p {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin-bottom: 24px;
+}
+#logoutModal .auth-card .modal-actions {
+  display: flex;
+  gap: 12px;
+}
+#logoutModal .auth-card .modal-actions .btn {
+  flex: 1;
+  justify-content: center;
+}
+#logoutModal .auth-card .modal-actions .btn-cancel {
+  background: var(--bg);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+}
+#logoutModal .auth-card .modal-actions .btn-cancel:hover {
+  background: var(--surface-hover);
+}
+#logoutModal .auth-card .modal-actions .btn-danger {
+  background: #ef4444;
+  color: #fff;
+  border: none;
+}
+#logoutModal .auth-card .modal-actions .btn-danger:hover {
+  background: #dc2626;
+  box-shadow: 0 4px 20px rgba(239, 68, 68, 0.35);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* ===== DASHBOARD ===== */
+#dashboardPage { display: none; }
+
+.dashboard-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 220px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: 24px 16px;
   display: flex;
   flex-direction: column;
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 100;
+  transition: var(--transition);
+  overflow-y: auto;
 }
-.sidebar .logo {
-  font-size: 22px;
+.sidebar .brand {
+  font-size: 20px;
   font-weight: 700;
-  text-align: center;
-  padding-bottom: 28px;
-  background: var(--gradient-primary);
+  padding: 0 12px 24px;
+  background: var(--gradient);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   letter-spacing: -0.5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
+.sidebar .brand .logo-icon { font-size: 24px; -webkit-text-fill-color: initial; }
+.sidebar nav { flex: 1; }
 .sidebar .nav-item {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 14px 16px;
+  gap: 12px;
+  padding: 10px 14px;
+  width: 100%;
   border: none;
   border-radius: var(--radius-sm);
   background: transparent;
-  width: 100%;
+  color: var(--text-secondary);
   font-size: 14px;
   font-weight: 500;
-  color: var(--text-secondary);
   cursor: pointer;
   transition: var(--transition);
   text-align: left;
 }
-.sidebar .nav-item:hover {
-  background: rgba(102, 126, 234, 0.08);
-  color: var(--text-primary);
-}
+.sidebar .nav-item:hover { background: var(--surface-hover); color: var(--text-primary); }
 .sidebar .nav-item.active {
-  background: var(--gradient-primary);
-  color: white;
-  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+  background: var(--gradient);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(79, 70, 229, 0.25);
 }
-.sidebar .nav-item .icon { font-size: 20px; }
-.sidebar .logout-btn {
-  margin-top: auto;
-  color: var(--text-muted);
-}
-.sidebar .logout-btn:hover {
-  background: rgba(245, 87, 108, 0.1);
-  color: #f5576c;
-}
+.sidebar .nav-item .icon { font-size: 18px; }
+.sidebar .logout-btn { margin-top: auto; color: var(--text-muted); }
+.sidebar .logout-btn:hover { background: #fef2f2; color: #dc2626; }
+[data-theme="dark"] .sidebar .logout-btn:hover { background: #2a1515; }
 
-/* ---- Main Content ---- */
+/* Main content */
 .main-content {
-  margin-left: 240px;
+  flex: 1;
+  margin-left: 220px;
   padding: 32px 40px;
   min-height: 100vh;
 }
 
-/* ---- Top Bar ---- */
+/* Topbar */
 .topbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 32px;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
 }
-.topbar h2 {
-  font-size: 24px;
-  font-weight: 700;
-  background: var(--gradient-primary);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-.topbar-right {
+
+.topbar-left {
   display: flex;
   align-items: center;
   gap: 16px;
 }
+
+.topbar-left .greeting {
+  display: flex;
+  flex-direction: column;
+}
+.topbar-left .greeting .welcome-text {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+.topbar-left .greeting .user-name {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.3;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.topbar-left .greeting .user-name span {
+  background: var(--gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.topbar-left .greeting .user-role {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.topbar-left .greeting .user-role .course-badge {
+  display: inline-block;
+  background: var(--gradient);
+  color: #fff;
+  padding: 2px 10px;
+  border-radius: 50px;
+  font-size: 11px;
+  font-weight: 600;
+  -webkit-text-fill-color: #fff;
+}
+.topbar-left .greeting .user-role .teacher-role-badge {
+  display: inline-block;
+  background: var(--teacher-gradient);
+  color: #fff;
+  padding: 2px 10px;
+  border-radius: 50px;
+  font-size: 11px;
+  font-weight: 600;
+  -webkit-text-fill-color: #fff;
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .topbar-right .theme-toggle {
-  position: static;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 50%;
   width: 38px;
   height: 38px;
-  background: var(--glass-bg);
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--glass-border);
+  cursor: pointer;
+  font-size: 18px;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
 }
-.profile-mini {
+.topbar-right .theme-toggle:hover { background: var(--surface-hover); }
+
+.topbar-right .user-badge {
   display: flex;
   align-items: center;
   gap: 10px;
-  cursor: pointer;
-  padding: 6px 14px 6px 6px;
+  padding: 4px 14px 4px 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 50px;
-  background: var(--glass-bg);
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--glass-border);
+  cursor: pointer;
   transition: var(--transition);
 }
-.profile-mini:hover { box-shadow: var(--shadow-sm); }
-.profile-mini img {
-  width: 36px;
-  height: 36px;
+.topbar-right .user-badge:hover { box-shadow: var(--shadow); }
+.topbar-right .user-badge img {
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid rgba(102, 126, 234, 0.2);
+  background: var(--primary);
 }
-.profile-mini p {
+.topbar-right .user-badge .badge-info {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+.topbar-right .user-badge .badge-info .badge-name {
   font-size: 13px;
-  font-weight: 500;
-  color: var(--text-primary);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.topbar-right .user-badge .badge-info .badge-status {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.topbar-right .user-badge .badge-info .badge-status .dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #22c55e;
+  margin-right: 4px;
+  animation: pulse-dot 2s infinite;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }
 
-/* ---- Views ---- */
-.view { display: none; }
-.view.active { display: block; animation: fadeUp 0.4s ease; }
+/* Views */
+.view { display: none; animation: fadeUp 0.3s ease; }
+.view.active { display: block; }
 
-/* ---- Welcome Card ---- */
-.welcome-card {
-  background: var(--gradient-primary);
-  padding: 32px 36px;
+/* Welcome */
+.welcome {
+  background: var(--gradient);
+  padding: 28px 32px;
   border-radius: var(--radius);
-  color: white;
+  color: #fff;
   margin-bottom: 28px;
   position: relative;
   overflow: hidden;
 }
-.welcome-card::after {
+.welcome.teacher-welcome {
+  background: var(--teacher-gradient);
+}
+.welcome::after {
   content: '';
   position: absolute;
   top: -50%;
   right: -10%;
-  width: 300px;
-  height: 300px;
+  width: 200px;
+  height: 200px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.08);
 }
-.welcome-card h1 {
-  font-size: 24px;
-  font-weight: 700;
-  position: relative;
-}
-.welcome-card p {
-  opacity: 0.8;
-  font-size: 14px;
-  margin-top: 4px;
-  position: relative;
-}
+.welcome h1 { font-size: 22px; font-weight: 700; position: relative; }
+.welcome p { opacity: 0.85; font-size: 14px; margin-top: 2px; position: relative; }
 
-/* ---- Stats Grid ---- */
+/* Stats */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
   margin-bottom: 28px;
 }
 .stat-card {
-  background: var(--glass-bg);
-  backdrop-filter: blur(16px) saturate(1.4);
-  -webkit-backdrop-filter: blur(16px) saturate(1.4);
-  border: 1px solid var(--glass-border);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 24px 28px;
+  padding: 20px 24px;
   transition: var(--transition);
 }
 .stat-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-hover);
+  transform: translateY(-2px);
 }
-.stat-card .stat-icon {
-  font-size: 28px;
-  margin-bottom: 8px;
-  display: block;
-}
-.stat-card h3 {
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--text-primary);
-}
-.stat-card p {
-  color: var(--text-secondary);
-  font-size: 13px;
-  margin-top: 2px;
-}
+.stat-card .icon { font-size: 24px; display: block; margin-bottom: 4px; }
+.stat-card h3 { font-size: 24px; font-weight: 700; }
+.stat-card p { font-size: 13px; color: var(--text-secondary); }
 
-/* ---- Content Grid ---- */
+/* Content grid */
 .content-grid {
   display: grid;
   grid-template-columns: 2fr 1fr;
   gap: 24px;
 }
-.dashboard-card {
-  background: var(--glass-bg);
-  backdrop-filter: blur(16px) saturate(1.4);
-  -webkit-backdrop-filter: blur(16px) saturate(1.4);
-  border: 1px solid var(--glass-border);
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 28px;
+  padding: 24px;
   transition: var(--transition);
 }
-.dashboard-card:hover {
-  box-shadow: var(--shadow-md);
-}
-.dashboard-card h3 {
-  font-size: 16px;
+.card:hover { box-shadow: var(--shadow); }
+.card h3 {
+  font-size: 15px;
   font-weight: 600;
-  margin-bottom: 20px;
-  color: var(--text-primary);
-  letter-spacing: -0.3px;
+  margin-bottom: 16px;
 }
 
-/* ---- Activity ---- */
-.activity {
+.activity-item {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 14px 0;
-  border-bottom: 1px solid var(--border-light);
-  transition: var(--transition);
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
 }
-.activity:last-child { border-bottom: none; }
-.activity:hover { padding-left: 8px; }
-.activity .activity-icon {
-  width: 40px;
-  height: 40px;
+.activity-item:last-child { border-bottom: none; }
+.activity-item .icon {
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  background: rgba(102, 126, 234, 0.08);
+  background: var(--bg);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: 16px;
   flex-shrink: 0;
 }
-.activity .activity-text p {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-primary);
-}
-.activity .activity-text span {
-  font-size: 12px;
-  color: var(--text-muted);
-}
+.activity-item .info p { font-size: 14px; font-weight: 500; }
+.activity-item .info span { font-size: 12px; color: var(--text-muted); }
 
-/* ---- Profile Card ---- */
 .profile-card { text-align: center; }
 .profile-card img {
   width: 80px;
   height: 80px;
   border-radius: 50%;
   object-fit: cover;
-  border: 3px solid rgba(102, 126, 234, 0.2);
   margin-bottom: 12px;
+  background: var(--primary);
 }
-.profile-card h3 {
-  font-size: 18px;
-  font-weight: 600;
+.profile-card h3 { font-size: 18px; }
+.profile-card .email { color: var(--text-secondary); font-size: 13px; }
+.profile-card .profile-course {
+  display: inline-block;
+  background: var(--gradient);
+  color: #fff;
+  padding: 2px 14px;
+  border-radius: 50px;
+  font-size: 12px;
+  font-weight: 500;
+  margin-top: 4px;
 }
-.profile-card p {
-  color: var(--text-secondary);
-  font-size: 13px;
+.profile-card .profile-role-badge {
+  display: inline-block;
+  background: var(--teacher-gradient);
+  color: #fff;
+  padding: 2px 14px;
+  border-radius: 50px;
+  font-size: 12px;
+  font-weight: 500;
+  margin-top: 4px;
 }
-.detail-row {
+.profile-detail {
   display: flex;
   justify-content: space-between;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--border-light);
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
   font-size: 13px;
 }
-.detail-row:last-child { border-bottom: none; }
-.detail-row span:first-child { color: var(--text-muted); }
-.detail-row span:last-child { font-weight: 500; }
+.profile-detail:last-child { border-bottom: none; }
+.profile-detail .label { color: var(--text-muted); }
+.profile-detail .value { font-weight: 500; }
 
-/* ---- Profile Upload ---- */
-.profile-upload-area {
+/* ===== PROFILE UPLOAD ===== */
+.upload-area {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 12px;
-  margin: 20px 0;
+  margin: 16px 0;
 }
-.profile-upload-area .avatar-preview {
-  width: 110px;
-  height: 110px;
+.upload-area .preview {
+  width: 100px;
+  height: 100px;
   border-radius: 50%;
   object-fit: cover;
-  border: 3px solid rgba(102, 126, 234, 0.2);
+  border: 3px solid var(--border);
 }
-.profile-upload-area .upload-btn {
-  padding: 10px 28px;
-  background: var(--gradient-primary);
-  color: white;
-  border: none;
-  border-radius: 50px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: var(--transition);
-}
-.profile-upload-area .upload-btn:hover {
-  transform: scale(1.03);
-  box-shadow: 0 6px 24px rgba(102, 126, 234, 0.3);
-}
-.profile-upload-area .file-input-wrapper {
+.upload-area .file-wrap {
   position: relative;
   overflow: hidden;
   display: inline-block;
 }
-.profile-upload-area .file-input-wrapper input[type="file"] {
+.upload-area .file-wrap input[type="file"] {
   position: absolute;
-  left: 0;
-  top: 0;
+  inset: 0;
   opacity: 0;
-  width: 100%;
-  height: 100%;
   cursor: pointer;
 }
-.profile-upload-area .upload-status {
-  font-size: 13px;
+.upload-status { font-size: 13px; color: var(--text-muted); }
+
+/* ===== COURSES ===== */
+.course-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+.course-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  transition: var(--transition);
+}
+.course-card:hover {
+  box-shadow: var(--shadow-hover);
+  transform: translateY(-2px);
+}
+.course-card .icon { font-size: 32px; display: block; margin-bottom: 8px; }
+.course-card h4 { font-size: 16px; font-weight: 600; }
+.course-card p { font-size: 13px; color: var(--text-secondary); }
+.course-progress {
+  height: 4px;
+  background: var(--border);
+  border-radius: 10px;
+  margin-top: 10px;
+  overflow: hidden;
+}
+.course-progress .fill {
+  height: 100%;
+  border-radius: 10px;
+  background: var(--gradient);
+  transition: width 0.6s ease;
+}
+
+/* ===== GRADES ===== */
+.grade-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+}
+.grade-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  text-align: center;
+  transition: var(--transition);
+}
+.grade-card:hover { box-shadow: var(--shadow-hover); transform: translateY(-2px); }
+.grade-card .letter {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--primary);
+}
+.grade-card h4 { font-size: 15px; margin: 4px 0 2px; }
+.grade-card p { font-size: 13px; color: var(--text-secondary); }
+
+/* ===== CHAT ===== */
+.chat-container {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  height: 480px;
+  overflow: hidden;
+}
+.chat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.chat-header .online { font-size: 13px; color: var(--text-secondary); }
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.chat-messages .empty {
+  margin: auto;
   color: var(--text-muted);
+  font-size: 14px;
 }
-
-/* ---- Loading Spinner ---- */
-.loading-spinner {
-  display: inline-block;
-  width: 20px;
-  height: 20px;
-  border: 2px solid rgba(255,255,255,0.2);
-  border-top-color: white;
+.chat-msg {
+  display: flex;
+  gap: 10px;
+  max-width: 80%;
+  animation: fadeUp 0.2s ease;
+}
+.chat-msg.self {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+.chat-msg .avatar {
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  animation: spin 0.6s linear infinite;
-  margin-right: 8px;
-  vertical-align: middle;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 14px;
+  color: #fff;
+  flex-shrink: 0;
+  background: var(--primary);
+}
+.chat-msg .bubble {
+  background: var(--bg);
+  padding: 10px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+.chat-msg.self .bubble {
+  background: var(--gradient);
+  color: #fff;
+  border: none;
+}
+.chat-msg .name { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+.chat-msg.self .name { color: rgba(255,255,255,0.8); }
+.chat-msg .text { font-size: 14px; word-break: break-word; }
+.chat-msg .time { font-size: 10px; color: var(--text-muted); display: block; margin-top: 3px; }
+.chat-msg.self .time { color: rgba(255,255,255,0.6); }
+
+.typing-indicator {
+  display: none;
+  padding: 8px 16px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  align-self: flex-start;
+  margin-bottom: 4px;
+}
+.typing-indicator .dots::after {
+  content: '...';
+  animation: dots 1.4s infinite;
+}
+@keyframes dots {
+  0%, 20% { content: ''; }
+  40%, 60% { content: '.'; }
+  80%, 100% { content: '..'; }
 }
 
-/* ============================================
-   RESPONSIVE
-   ============================================ */
+.chat-input {
+  display: flex;
+  gap: 10px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
+}
+.chat-input input {
+  flex: 1;
+  padding: 10px 16px;
+  border: 1.5px solid var(--border);
+  border-radius: 50px;
+  font-size: 14px;
+  background: var(--bg);
+  color: var(--text-primary);
+  outline: none;
+  transition: var(--transition);
+}
+.chat-input input:focus { border-color: var(--primary); }
+.chat-input input:disabled { opacity: 0.5; cursor: not-allowed; }
+.chat-input button {
+  padding: 10px 24px;
+  border: none;
+  border-radius: 50px;
+  background: var(--gradient);
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: var(--transition);
+  white-space: nowrap;
+}
+.chat-input button:hover:not(:disabled) { box-shadow: 0 4px 16px rgba(79,70,229,0.3); }
+.chat-input button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ===== RESPONSIVE ===== */
 @media (max-width: 900px) {
-  .stats-grid { grid-template-columns: 1fr 1fr; }
   .content-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 768px) {
   .sidebar {
-    width: 70px;
-    padding: 20px 10px;
+    width: 60px;
+    padding: 16px 8px;
   }
-  .sidebar .logo { font-size: 16px; }
-  .sidebar .nav-item {
-    justify-content: center;
-    font-size: 0;
-    padding: 12px;
-  }
+  .sidebar .brand { font-size: 16px; padding: 0 8px 16px; text-align: center; }
+  .sidebar .brand .logo-icon { font-size: 20px; }
+  .sidebar .nav-item { justify-content: center; padding: 10px; }
   .sidebar .nav-item .label { display: none; }
-  .sidebar .nav-item .icon { font-size: 22px; }
+  .sidebar .nav-item .icon { font-size: 20px; }
   .sidebar .logout-btn .label { display: none; }
-  .main-content { margin-left: 70px; padding: 20px; }
-  .stats-grid { grid-template-columns: 1fr; }
-  .topbar h2 { font-size: 20px; }
-  .profile-mini p { display: none; }
+  .main-content {
+    margin-left: 60px;
+    padding: 20px;
+  }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .topbar-left .greeting .user-name { font-size: 17px; }
+  .topbar-right .user-badge .badge-info { display: none; }
+  .topbar-right .user-badge { padding: 4px; }
+  .chat-msg { max-width: 95%; }
+  .glow-blob { width: 300px; height: 300px; }
+  .role-toggle-btn { font-size: 12px; padding: 6px 14px; }
 }
 @media (max-width: 480px) {
-  .login-card { padding: 32px 24px; }
+  .auth-card { padding: 28px 20px; }
   .main-content { padding: 16px; }
-  .welcome-card { padding: 24px; }
-  .welcome-card h1 { font-size: 20px; }
+  .stats-grid { grid-template-columns: 1fr; }
+  .welcome { padding: 20px; }
+  .welcome h1 { font-size: 18px; }
+  .chat-container { height: 400px; }
+  .chat-input { flex-direction: column; }
+  .chat-input button { width: 100%; }
+  .topbar-left .greeting .user-name { font-size: 16px; }
+  .topbar { padding-bottom: 12px; margin-bottom: 20px; }
+  .glow-blob { width: 200px; height: 200px; }
+  .role-toggle { flex-direction: column; border-radius: var(--radius-sm); }
+  .role-toggle-btn { border-radius: var(--radius-sm); }
+  #logoutModal .auth-card .modal-actions {
+    flex-direction: column;
+  }
 }
 </style>
 </head>
-
 <body>
 
-<!-- ===== LOADING SCREEN ===== -->
-<div id="loadingScreen">
-  <div class="loader-ring"></div>
+<!-- ===== GLOW BACKGROUND ===== -->
+<div class="glow-container" id="glowContainer">
+  <div class="isometric-matrix"></div>
+  <div class="mesh-orb mesh-orb-1"></div>
+  <div class="mesh-orb mesh-orb-2"></div>
+  <div class="mesh-orb mesh-orb-3"></div>
+  <div class="glow-blob" id="glowBlob"></div>
+  <div class="glow-blob-secondary" id="glowBlobSecondary"></div>
 </div>
 
-<!-- ===== LOGIN PAGE ===== -->
+<!-- LOADING -->
+<div id="loadingScreen"><div class="loader"></div></div>
+
+<!-- LOGIN -->
 <div id="loginPage">
-  <div class="login-card" style="position:relative;">
-    <button class="theme-toggle" id="themeToggle" type="button">🌙</button>
-    <div class="avatar-wrap">
-      <img src="https://api.dicebear.com/9.x/avataaars/svg?seed=Student" alt="User avatar">
+  <div class="auth-card">
+    <button class="theme-toggle" id="themeToggle1">🌙</button>
+    <div class="logo-wrap">
+      <h1>🎓 Student Hub</h1>
+      <p>Sign in to continue</p>
     </div>
-    <h1>Welcome Back</h1>
-    <p class="subtitle">Sign in to continue to Student Hub</p>
-    <div class="error-message" id="loginError"></div>
-    <div class="success-message" id="loginSuccess"></div>
+    
+    <!-- Role Toggle -->
+    <div class="role-toggle" id="loginRoleToggle">
+      <button class="role-toggle-btn active-student" data-role="student" id="loginStudentBtn">👨‍🎓 Student</button>
+      <button class="role-toggle-btn" data-role="teacher" id="loginTeacherBtn">👨‍🏫 Teacher</button>
+    </div>
+    
+    <div class="error-msg" id="loginError"></div>
+    <div class="success-msg" id="loginSuccess"></div>
     <form id="loginForm">
       <div class="form-group">
         <label for="loginEmail">Email</label>
-        <input type="email" id="loginEmail" placeholder="Enter your email" required>
+        <input type="email" id="loginEmail" placeholder="you@example.com" required>
       </div>
       <div class="form-group">
         <label for="loginPassword">Password</label>
-        <div class="password-box">
+        <div class="password-wrapper">
           <input type="password" id="loginPassword" placeholder="••••••••" required>
-          <button type="button" class="show-password" data-target="loginPassword">👁️</button>
+          <button type="button" class="toggle-pw" data-target="loginPassword">👁</button>
         </div>
       </div>
       <div class="options-row">
-        <label class="custom-checkbox">
-          <input type="checkbox" id="rememberMe">
-          <span class="checkmark"></span>
-          <span class="checkbox-label">Remember me</span>
+        <label class="checkbox-label">
+          <input type="checkbox" id="rememberMe"> Remember me
         </label>
-        <a href="#" id="forgotPassword">Can't remember?</a>
+        <a href="#" id="forgotLink">Forgot password?</a>
       </div>
-      <button type="submit" class="login-btn" id="loginBtn">Sign In</button>
+      <button type="submit" class="btn btn-primary" id="loginBtn" style="width:100%;justify-content:center;">Sign In</button>
     </form>
-    <div class="signup-text">Don't have an account? <a href="#" id="showSignup">Sign Up</a></div>
+    <div class="auth-link">Don't have an account? <a href="#" id="showSignup">Sign up</a></div>
   </div>
 </div>
 
-<!-- ===== SIGNUP PAGE ===== -->
+<!-- SIGNUP -->
 <div id="signupPage">
-  <div class="login-card" style="position:relative;">
-    <button class="theme-toggle" id="themeToggle2" type="button">🌙</button>
-    <div class="avatar-wrap">
-      <img src="avatar.webp" alt="User avatar" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2280%22 height=%2280%22 viewBox=%220 0 80 80%22%3E%3Ccircle cx=%2240%22 cy=%2240%22 r=%2240%22 fill=%22%23667eea%22/%3E%3Ccircle cx=%2240%22 cy=%2228%22 r=%2216%22 fill=%22white%22/%3E%3Ccircle cx=%2240%22 cy=%2264%22 r=%2224%22 fill=%22white%22/%3E%3C/svg%3E'">
+  <div class="auth-card">
+    <button class="theme-toggle" id="themeToggle2">🌙</button>
+    <div class="logo-wrap">
+      <h1>🎓 Student Hub</h1>
+      <p>Create your account</p>
     </div>
-    <h1>Create Account</h1>
-    <p class="subtitle">Join Student Hub today</p>
-    <div class="error-message" id="signupError"></div>
-    <div class="success-message" id="signupSuccess"></div>
+    
+    <!-- Role Toggle -->
+    <div class="role-toggle" id="signupRoleToggle">
+      <button class="role-toggle-btn active-student" data-role="student" id="signupStudentBtn">👨‍🎓 Student</button>
+      <button class="role-toggle-btn" data-role="teacher" id="signupTeacherBtn">👨‍🏫 Teacher</button>
+    </div>
+    
+    <div class="error-msg" id="signupError"></div>
+    <div class="success-msg" id="signupSuccess"></div>
     <form id="signupForm">
       <div class="form-group">
-        <label for="signupName">Full Name</label>
-        <input type="text" id="signupName" placeholder="Enter your full name" required>
+        <label for="signupName">👤 Full Name</label>
+        <input type="text" id="signupName" placeholder="John Doe" required>
       </div>
       <div class="form-group">
-        <label for="signupEmail">Email</label>
-        <input type="email" id="signupEmail" placeholder="Enter your email" required>
+        <label for="signupEmail">📧 Email</label>
+        <input type="email" id="signupEmail" placeholder="you@example.com" required>
       </div>
+      
+      <!-- Student Course Selection (hidden for teacher) -->
+      <div class="form-group" id="studentCourseGroup">
+        <label for="signupCourse">📚 Select Your Course</label>
+        <select id="signupCourse">
+          <option value="">Choose your course...</option>
+          <option value="computer-science">🖥️ Computer Science</option>
+          <option value="data-science">📊 Data Science</option>
+          <option value="artificial-intelligence">🤖 Artificial Intelligence</option>
+          <option value="cybersecurity">🔒 Cybersecurity</option>
+          <option value="software-engineering">⚡ Software Engineering</option>
+          <option value="information-technology">💻 Information Technology</option>
+          <option value="business-analytics">📈 Business Analytics</option>
+          <option value="digital-media">🎨 Digital Media</option>
+          <option value="game-development">🎮 Game Development</option>
+          <option value="cloud-computing">☁️ Cloud Computing</option>
+        </select>
+      </div>
+      
+      <!-- Teacher Department (shown for teacher) -->
+      <div class="form-group" id="teacherDepartmentGroup" style="display:none;">
+        <label for="signupDepartment">🏛️ Department</label>
+        <select id="signupDepartment">
+          <option value="computer-science">Computer Science</option>
+          <option value="mathematics">Mathematics</option>
+          <option value="physics">Physics</option>
+          <option value="chemistry">Chemistry</option>
+          <option value="biology">Biology</option>
+          <option value="engineering">Engineering</option>
+          <option value="business">Business</option>
+          <option value="arts">Arts & Humanities</option>
+        </select>
+      </div>
+      
       <div class="form-group">
-        <label for="signupPassword">Password</label>
-        <div class="password-box">
-          <input type="password" id="signupPassword" placeholder="••••••••" required>
-          <button type="button" class="show-password" data-target="signupPassword">👁️</button>
+        <label for="signupPassword">🔒 Password</label>
+        <div class="password-wrapper">
+          <input type="password" id="signupPassword" placeholder="Min 6 characters" required>
+          <button type="button" class="toggle-pw" data-target="signupPassword">👁</button>
+        </div>
+        <div style="margin-top:4px;height:4px;background:var(--border);border-radius:10px;overflow:hidden;">
+          <div id="strengthBar" style="width:0%;height:100%;border-radius:10px;transition:width 0.3s;"></div>
         </div>
       </div>
       <div class="form-group">
-        <label for="signupConfirmPassword">Confirm Password</label>
-        <div class="password-box">
-          <input type="password" id="signupConfirmPassword" placeholder="••••••••" required>
-        </div>
+        <label for="signupConfirm">✅ Confirm Password</label>
+        <input type="password" id="signupConfirm" placeholder="Confirm password" required>
       </div>
-      <button type="submit" class="login-btn" id="signupBtn">Create Account</button>
+      <button type="submit" class="btn btn-primary" id="signupBtn" style="width:100%;justify-content:center;">Create Account</button>
     </form>
-    <div class="signup-text">Already have an account? <a href="#" id="showLogin">Sign In</a></div>
+    <div class="auth-link">Already have an account? <a href="#" id="showLogin">Sign in</a></div>
   </div>
 </div>
 
-<!-- ===== DASHBOARD ===== -->
+<!-- FORGOT PASSWORD MODAL -->
+<div id="forgotModal">
+  <div class="auth-card">
+    <button class="close-modal" id="closeForgot">✕</button>
+    <div class="logo-wrap">
+      <h1>🔑 Reset Password</h1>
+      <p>Enter your email to reset</p>
+    </div>
+    <div class="error-msg" id="resetError"></div>
+    <div class="success-msg" id="resetSuccess"></div>
+    <form id="resetForm">
+      <div class="form-group">
+        <label for="resetEmail">Email</label>
+        <input type="email" id="resetEmail" placeholder="you@example.com" required>
+      </div>
+      <button type="submit" class="btn btn-primary" id="resetBtn" style="width:100%;justify-content:center;">Send Reset Link</button>
+    </form>
+    <div class="auth-link"><a href="#" id="backFromReset">Back to sign in</a></div>
+  </div>
+</div>
+
+<!-- ===== CUSTOM LOGOUT MODAL ===== -->
+<div id="logoutModal">
+  <div class="auth-card">
+    <div class="modal-icon">🚪</div>
+    <h2>Logout?</h2>
+    <p>Are you sure you want to logout? You'll need to sign in again.</p>
+    <div class="modal-actions">
+      <button class="btn btn-cancel" id="cancelLogoutBtn">Cancel</button>
+      <button class="btn btn-danger" id="confirmLogoutBtn">Yes, Logout</button>
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
 <div id="dashboardPage">
-  <div class="dashboard-container">
+  <div class="dashboard-layout">
     <!-- Sidebar -->
-    <nav class="sidebar">
-      <div class="logo">✦ Student Hub</div>
-      <button class="nav-item active" data-view="dashboard"><span class="icon">📊</span><span class="label">Dashboard</span></button>
-      <button class="nav-item" data-view="profile"><span class="icon">👤</span><span class="label">Profile</span></button>
-      <button class="nav-item" data-view="courses"><span class="icon">📚</span><span class="label">Courses</span></button>
-      <button class="nav-item" data-view="grades"><span class="icon">📈</span><span class="label">Grades</span></button>
-      <button class="nav-item" data-view="messages"><span class="icon">💬</span><span class="label">Messages</span></button>
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="logo-icon">🎓</span>
+        <span>Hub</span>
+      </div>
+      <nav>
+        <button class="nav-item active" data-view="dashboard"><span class="icon">📊</span><span class="label">Dashboard</span></button>
+        <button class="nav-item" data-view="profile"><span class="icon">👤</span><span class="label">Profile</span></button>
+        <button class="nav-item" data-view="courses"><span class="icon">📚</span><span class="label">Courses</span></button>
+        <button class="nav-item" data-view="grades"><span class="icon">📈</span><span class="label">Grades</span></button>
+        <button class="nav-item" data-view="messages"><span class="icon">💬</span><span class="label">Messages</span></button>
+        <button class="nav-item" data-view="chat"><span class="icon">🗨️</span><span class="label">Chat</span></button>
+        <!-- Teacher-only items (hidden by default) -->
+        <button class="nav-item teacher-only" data-view="attendance" style="display:none;"><span class="icon">📋</span><span class="label">Attendance</span></button>
+        <button class="nav-item teacher-only" data-view="students" style="display:none;"><span class="icon">👨‍🎓</span><span class="label">Students</span></button>
+      </nav>
       <button class="nav-item logout-btn" id="logoutBtn"><span class="icon">🚪</span><span class="label">Logout</span></button>
-    </nav>
+    </aside>
 
     <!-- Main -->
     <main class="main-content">
-      <!-- Top Bar -->
+      <!-- Topbar -->
       <div class="topbar">
-        <h2>Dashboard</h2>
+        <div class="topbar-left">
+          <div class="greeting">
+            <span class="welcome-text">Good morning 👋</span>
+            <div class="user-name">
+              Welcome back, <span id="welcomeName">User</span>
+            </div>
+            <span class="user-role" id="userRoleDisplay">
+              🎯 Student
+              <span class="course-badge" id="courseBadge">Computer Science</span>
+            </span>
+          </div>
+        </div>
         <div class="topbar-right">
-          <button class="theme-toggle" id="themeToggle3" type="button">🌙</button>
-          <div class="profile-mini">
-            <p id="dashboardUserName">John Doe</p>
-            <img id="miniAvatar" src="avatar.webp" alt="User avatar" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2236%22 height=%2236%22 viewBox=%220 0 36 36%22%3E%3Ccircle cx=%2218%22 cy=%2218%22 r=%2218%22 fill=%22%23667eea%22/%3E%3Ccircle cx=%2218%22 cy=%2213%22 r=%227%22 fill=%22white%22/%3E%3Ccircle cx=%2218%22 cy=%2228%22 r=%2211%22 fill=%22white%22/%3E%3C/svg%3E'">
-          </div>
-        </div>
-      </div>
-
-      <!-- Dashboard View -->
-      <div id="view-dashboard" class="view active">
-        <div class="welcome-card">
-          <h1>👋 Welcome back, <span id="welcomeName">John</span>!</h1>
-          <p>Here's what's happening with your courses today.</p>
-        </div>
-        <div class="stats-grid">
-          <div class="stat-card"><span class="stat-icon">📚</span><h3 id="courseCount">6</h3><p>Enrolled Courses</p></div>
-          <div class="stat-card"><span class="stat-icon">✅</span><h3 id="completedCount">4</h3><p>Completed</p></div>
-          <div class="stat-card"><span class="stat-icon">📝</span><h3 id="pendingCount">2</h3><p>Pending Assignments</p></div>
-        </div>
-        <div class="content-grid">
-          <div class="dashboard-card">
-            <h3>Recent Activity</h3>
-            <div class="activity"><div class="activity-icon">📖</div><div class="activity-text"><p>Completed Module 3: JavaScript Basics</p><span>2 hours ago</span></div></div>
-            <div class="activity"><div class="activity-icon">📝</div><div class="activity-text"><p>Submitted Assignment: CSS Grid</p><span>5 hours ago</span></div></div>
-            <div class="activity"><div class="activity-icon">💬</div><div class="activity-text"><p>New message from Professor Smith</p><span>1 day ago</span></div></div>
-          </div>
-          <div class="dashboard-card profile-card">
-            <h3>Profile</h3>
-            <img id="profileAvatar" src="avatar.webp" alt="User avatar" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2280%22 height=%2280%22 viewBox=%220 0 80 80%22%3E%3Ccircle cx=%2240%22 cy=%2240%22 r=%2240%22 fill=%22%23667eea%22/%3E%3Ccircle cx=%2240%22 cy=%2228%22 r=%2216%22 fill=%22white%22/%3E%3Ccircle cx=%2240%22 cy=%2264%22 r=%2224%22 fill=%22white%22/%3E%3C/svg%3E'">
-            <h3 id="profileName">John Doe</h3>
-            <p id="profileEmail">john.doe@example.com</p>
-            <div style="margin-top:16px;text-align:left;">
-              <div class="detail-row"><span>📅 Joined</span><span id="joinedDate">January 2025</span></div>
-              <div class="detail-row"><span>🎯 Role</span><span>Student</span></div>
-              <div class="detail-row"><span>🏆 Points</span><span>1,250</span></div>
+          <button class="theme-toggle" id="themeToggle3">🌙</button>
+          <div class="user-badge">
+            <img id="miniAvatar" src="" alt="Avatar">
+            <div class="badge-info">
+              <span class="badge-name" id="userName">User</span>
+              <span class="badge-status"><span class="dot"></span>Online</span>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Profile View -->
+      <!-- VIEW: Dashboard -->
+      <div id="view-dashboard" class="view active">
+        <div class="welcome" id="welcomeBanner">
+          <h1>📊 Your Dashboard</h1>
+          <p id="dashboardSubtitle">Here's your academic overview</p>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-card"><span class="icon">📚</span><h3 id="courseCount">6</h3><p>Enrolled</p></div>
+          <div class="stat-card"><span class="icon">✅</span><h3 id="completedCount">4</h3><p>Completed</p></div>
+          <div class="stat-card"><span class="icon">📝</span><h3 id="pendingCount">2</h3><p>Pending</p></div>
+        </div>
+        <div class="content-grid">
+          <div class="card">
+            <h3>📋 Recent Activity</h3>
+            <div class="activity-item">
+              <span class="icon">📖</span>
+              <div class="info"><p>Completed Module 3: JavaScript</p><span>2 hours ago</span></div>
+            </div>
+            <div class="activity-item">
+              <span class="icon">📝</span>
+              <div class="info"><p>Submitted CSS Grid assignment</p><span>5 hours ago</span></div>
+            </div>
+            <div class="activity-item">
+              <span class="icon">💬</span>
+              <div class="info"><p>Message from Professor Smith</p><span>1 day ago</span></div>
+            </div>
+          </div>
+          <div class="card profile-card">
+            <h3>👤 Profile</h3>
+            <img id="profileAvatar" src="" alt="Avatar">
+            <h3 id="profileName">User</h3>
+            <p class="email" id="profileEmail">user@example.com</p>
+            <span class="profile-course" id="profileCourseBadge">Computer Science</span>
+            <span class="profile-role-badge" id="profileRoleBadge" style="display:none;">👨‍🏫 Teacher</span>
+            <div style="margin-top:14px;text-align:left;">
+              <div class="profile-detail"><span class="label">Joined</span><span class="value" id="joinedDate">2025</span></div>
+              <div class="profile-detail"><span class="label">Role</span><span class="value" id="profileRoleValue">Student</span></div>
+              <div class="profile-detail"><span class="label">Points</span><span class="value">1,250</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- VIEW: Profile -->
       <div id="view-profile" class="view">
-        <div class="dashboard-card" style="max-width:500px;margin:0 auto;">
-          <h3 style="text-align:center;">👤 My Profile</h3>
-          <div class="profile-upload-area">
-            <img id="profileUploadPreview" src="avatar.webp" alt="Profile preview" class="avatar-preview" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22110%22 height=%22110%22 viewBox=%220 0 110 110%22%3E%3Ccircle cx=%2255%22 cy=%2255%22 r=%2255%22 fill=%22%23667eea%22/%3E%3Ccircle cx=%2255%22 cy=%2238%22 r=%2222%22 fill=%22white%22/%3E%3Ccircle cx=%2255%22 cy=%2285%22 r=%2232%22 fill=%22white%22/%3E%3C/svg%3E'">
-            <div class="file-input-wrapper">
-              <button class="upload-btn">Choose Photo</button>
-              <input type="file" id="profilePictureInput" accept="image/*">
+        <div class="card" style="max-width:480px;margin:0 auto;">
+          <h3 style="text-align:center;">✏️ Edit Profile</h3>
+          <div class="upload-area">
+            <img id="profileUploadPreview" src="" alt="Preview" class="preview">
+            <div class="file-wrap">
+              <button class="btn btn-sm">Choose Photo</button>
+              <input type="file" id="profilePicInput" accept="image/*">
             </div>
             <div id="uploadStatus" class="upload-status">No photo selected</div>
           </div>
-          <div class="detail-row"><span>Full Name</span><span id="profileFullName">John Doe</span></div>
-          <div class="detail-row"><span>Email</span><span id="profileFullEmail">john.doe@example.com</span></div>
-          <div class="detail-row"><span>Student ID</span><span>STU-2025-001</span></div>
-          <div class="detail-row"><span>Department</span><span>Computer Science</span></div>
-          <div class="detail-row"><span>Year</span><span>2nd Year</span></div>
+          <div class="profile-detail"><span class="label">Name</span><span class="value" id="fullName">User</span></div>
+          <div class="profile-detail"><span class="label">Email</span><span class="value" id="fullEmail">user@example.com</span></div>
+          <div class="profile-detail"><span class="label">Role</span><span class="value" id="profileRoleDisplay">Student</span></div>
+          <div class="profile-detail"><span class="label">Course / Department</span><span class="value" id="profileCourseDisplay">Computer Science</span></div>
+          <div class="profile-detail"><span class="label">Student ID</span><span class="value">STU-2025-001</span></div>
+          <div class="profile-detail"><span class="label">Year</span><span class="value">2nd Year</span></div>
         </div>
       </div>
 
-      <!-- Courses View -->
+      <!-- VIEW: Courses -->
       <div id="view-courses" class="view">
-        <h2 style="margin-bottom:20px;font-size:22px;font-weight:600;">📚 My Courses</h2>
-        <div class="stats-grid">
-          <div class="stat-card"><span class="stat-icon">🖥️</span><h3>Web Development</h3><p>In Progress</p></div>
-          <div class="stat-card"><span class="stat-icon">📊</span><h3>Data Science</h3><p>In Progress</p></div>
-          <div class="stat-card"><span class="stat-icon">🤖</span><h3>AI Basics</h3><p>Completed</p></div>
+        <h2 style="margin-bottom:20px;">📚 My Courses</h2>
+        <div class="course-grid">
+          <div class="course-card">
+            <span class="icon">🖥️</span>
+            <h4>Web Development</h4>
+            <p>75% complete</p>
+            <div class="course-progress"><div class="fill" style="width:75%;"></div></div>
+          </div>
+          <div class="course-card">
+            <span class="icon">📊</span>
+            <h4>Data Science</h4>
+            <p>60% complete</p>
+            <div class="course-progress"><div class="fill" style="width:60%;"></div></div>
+          </div>
+          <div class="course-card">
+            <span class="icon">🤖</span>
+            <h4>AI Basics</h4>
+            <p>100% complete</p>
+            <div class="course-progress"><div class="fill" style="width:100%;background:#22c55e;"></div></div>
+          </div>
         </div>
       </div>
 
-      <!-- Grades View -->
+      <!-- VIEW: Grades -->
       <div id="view-grades" class="view">
-        <h2 style="margin-bottom:20px;font-size:22px;font-weight:600;">📈 Grades</h2>
-        <div class="stats-grid">
-          <div class="stat-card"><span class="stat-icon">A</span><h3>Web Development</h3><p>95%</p></div>
-          <div class="stat-card"><span class="stat-icon">B+</span><h3>Data Science</h3><p>87%</p></div>
-          <div class="stat-card"><span class="stat-icon">A+</span><h3>AI Basics</h3><p>98%</p></div>
+        <h2 style="margin-bottom:20px;">📈 My Grades</h2>
+        <div class="grade-grid">
+          <div class="grade-card"><div class="letter">A</div><h4>Web Development</h4><p>95%</p></div>
+          <div class="grade-card"><div class="letter">B+</div><h4>Data Science</h4><p>87%</p></div>
+          <div class="grade-card"><div class="letter">A+</div><h4>AI Basics</h4><p>98%</p></div>
+        </div>
+        <div class="card" style="margin-top:20px;text-align:center;">
+          <h3>Overall GPA</h3>
+          <div style="font-size:36px;font-weight:700;background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">3.8</div>
         </div>
       </div>
 
-      <!-- Messages View -->
+      <!-- VIEW: Messages -->
       <div id="view-messages" class="view">
-        <h2 style="margin-bottom:20px;font-size:22px;font-weight:600;">💬 Messages</h2>
-        <div class="dashboard-card">
-          <div class="activity"><div class="activity-icon">👨‍🏫</div><div class="activity-text"><p><strong>Professor Smith:</strong> Great work on the assignment!</p><span>2 hours ago</span></div></div>
-          <div class="activity"><div class="activity-icon">👩‍🏫</div><div class="activity-text"><p><strong>Dr. Johnson:</strong> Don't forget the deadline tomorrow</p><span>1 day ago</span></div></div>
-          <div class="activity"><div class="activity-icon">📢</div><div class="activity-text"><p><strong>Admin:</strong> New course materials available</p><span>3 days ago</span></div></div>
+        <h2 style="margin-bottom:20px;">💬 Messages</h2>
+        <div class="card">
+          <div class="activity-item">
+            <span class="icon">👨‍🏫</span>
+            <div class="info"><p><strong>Professor Smith:</strong> Great work on the assignment!</p><span>2h ago</span></div>
+          </div>
+          <div class="activity-item">
+            <span class="icon">👩‍🏫</span>
+            <div class="info"><p><strong>Dr. Johnson:</strong> Don't forget the deadline tomorrow</p><span>1d ago</span></div>
+          </div>
+          <div class="activity-item">
+            <span class="icon">📢</span>
+            <div class="info"><p><strong>Admin:</strong> New course materials available</p><span>3d ago</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- VIEW: Chat -->
+      <div id="view-chat" class="view">
+        <h2 style="margin-bottom:20px;">🗨️ Live Chat</h2>
+        <div class="chat-container">
+          <div class="chat-header">
+            <span>💬 General</span>
+            <span class="online" id="onlineCount">🟢 0 online</span>
+          </div>
+          <div class="chat-messages" id="chatMessages">
+            <div class="empty">💬 No messages yet. Say hello!</div>
+          </div>
+          <div class="typing-indicator" id="typingIndicator">✍️ <span id="typingName">Someone</span> is typing<span class="dots"></span></div>
+          <div class="chat-input">
+            <input type="text" id="chatInput" placeholder="Type a message..." maxlength="500">
+            <button id="sendBtn">Send</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- VIEW: Attendance (Teacher Only) -->
+      <div id="view-attendance" class="view">
+        <h2 style="margin-bottom:20px;">📋 Take Attendance</h2>
+        <div class="card">
+          <div style="text-align:center;padding:40px 20px;">
+            <div style="font-size:48px;margin-bottom:16px;">👨‍🏫</div>
+            <h3>Teacher Attendance Module</h3>
+            <p style="color:var(--text-secondary);margin-bottom:20px;">Select a course to start taking attendance</p>
+            <select id="teacherCourseSelect" style="max-width:300px;margin:0 auto;display:block;padding:10px;border:1.5px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);color:var(--text-primary);font-size:14px;">
+              <option value="">Select a course...</option>
+              <option value="course_101">Computer Science 101</option>
+              <option value="course_102">Data Structures</option>
+              <option value="course_103">Web Development</option>
+            </select>
+            <button class="btn btn-teacher" style="margin-top:16px;" id="startAttendanceBtn">▶️ Start Attendance Session</button>
+          </div>
+        </div>
+        <div id="attendanceSession" style="display:none;margin-top:20px;">
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;">
+              <div>
+                <h3>📱 QR Code</h3>
+                <p style="color:var(--text-secondary);font-size:13px;">Students scan this to check in</p>
+              </div>
+              <button class="btn btn-danger" id="stopAttendanceBtn">⏹️ End Session</button>
+            </div>
+            <div style="display:flex;justify-content:center;padding:20px;background:#fff;border-radius:var(--radius-sm);margin-top:12px;">
+              <div style="text-align:center;">
+                <div id="qrCodePlaceholder" style="width:200px;height:200px;background:var(--bg);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;font-size:48px;color:var(--text-muted);">
+                  📱
+                </div>
+                <p style="margin-top:12px;font-size:13px;color:var(--text-secondary);">
+                  <span id="qrTimer">⏳ Session Active</span>
+                </p>
+              </div>
+            </div>
+            <div style="margin-top:16px;">
+              <h4>🟢 Live Check-Ins (<span id="checkInCount">0</span> students)</h4>
+              <div id="liveCheckIns" style="margin-top:8px;max-height:200px;overflow-y:auto;">
+                <p style="color:var(--text-muted);font-size:13px;">Waiting for students to check in...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- VIEW: Students (Teacher Only) -->
+      <div id="view-students" class="view">
+        <h2 style="margin-bottom:20px;">👨‍🎓 My Students</h2>
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
+            <h3>Enrolled Students</h3>
+            <span style="font-size:13px;color:var(--text-secondary);">Total: <strong id="totalStudentsCount">0</strong></span>
+          </div>
+          <div id="studentsList">
+            <p style="color:var(--text-muted);font-size:13px;text-align:center;padding:20px;">No students enrolled yet</p>
+          </div>
         </div>
       </div>
     </main>
   </div>
 </div>
 
-<!-- ========================================== -->
-<!-- FIREBASE + JAVASCRIPT                     -->
-<!-- ========================================== -->
 <script type="module">
-// -------- Import Firebase --------
+// ===== FIREBASE IMPORTS =====
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-analytics.js";
 import { 
@@ -919,14 +1616,25 @@ import {
   signInWithEmailAndPassword,
   onAuthStateChanged,
   signOut,
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
+  confirmPasswordReset,
+  setPersistence,
+  browserLocalPersistence
 } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
 import {
   getFirestore,
   doc,
   setDoc,
   getDoc,
-  updateDoc
+  updateDoc,
+  collection,
+  query,
+  orderBy,
+  onSnapshot,
+  addDoc,
+  serverTimestamp,
+  deleteDoc,
+  where
 } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
 import {
   getStorage,
@@ -934,8 +1642,16 @@ import {
   uploadBytes,
   getDownloadURL
 } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-storage.js";
+import {
+  getDatabase,
+  ref as dbRef,
+  set,
+  onValue,
+  onDisconnect,
+  serverTimestamp as rtdbServerTimestamp
+} from "https://www.gstatic.com/firebasejs/12.18.0/firebase-database.js";
 
-// -------- Config --------
+// ===== CONFIG =====
 const firebaseConfig = {
   apiKey: "AIzaSyATYycIBHS-hqwbX-MVNa7_867pb8jmKNg",
   authDomain: "index-bad60.firebaseapp.com",
@@ -943,7 +1659,8 @@ const firebaseConfig = {
   storageBucket: "index-bad60.firebasestorage.app",
   messagingSenderId: "60479450754",
   appId: "1:60479450754:web:856d8360c987f2d9500e9b",
-  measurementId: "G-S7DG5ZBLJP"
+  measurementId: "G-S7DG5ZBLJP",
+  databaseURL: "https://index-bad60-default-rtdb.firebaseio.com/"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -951,343 +1668,1046 @@ const analytics = getAnalytics(app);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
+const rtdb = getDatabase(app);
 
-// -------- DOM refs --------
-const loadingScreen = document.getElementById('loadingScreen');
-const loginPage = document.getElementById('loginPage');
-const dashboardPage = document.getElementById('dashboardPage');
+// ===== SET PERSISTENCE =====
+setPersistence(auth, browserLocalPersistence)
+  .then(() => {
+    console.log("✅ Persistence set to LOCAL");
+  })
+  .catch((error) => {
+    console.error("❌ Persistence error:", error);
+  });
 
-// ============================================
-// THEME TOGGLE
-// ============================================
+// ===== GLOW EFFECT =====
+const glowBlob = document.getElementById('glowBlob');
+const glowBlobSecondary = document.getElementById('glowBlobSecondary');
+
+document.addEventListener('mousemove', (e) => {
+  const x = e.clientX;
+  const y = e.clientY;
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  
+  glowBlob.style.left = x + 'px';
+  glowBlob.style.top = y + 'px';
+  glowBlob.classList.add('active');
+  
+  const secondaryX = width - x;
+  const secondaryY = height - y;
+  glowBlobSecondary.style.left = secondaryX + 'px';
+  glowBlobSecondary.style.top = secondaryY + 'px';
+});
+
+document.addEventListener('mouseleave', () => {
+  glowBlob.classList.remove('active');
+});
+
+// ===== DOM REFS =====
+const $ = id => document.getElementById(id);
+const loadingScreen = $('loadingScreen');
+const loginPage = $('loginPage');
+const signupPage = $('signupPage');
+const dashboardPage = $('dashboardPage');
+const forgotModal = $('forgotModal');
+const logoutModal = $('logoutModal');
+
+// ===== ROLE TOGGLE =====
+let selectedRole = 'student';
+
+// Login role toggle
+$('loginStudentBtn').addEventListener('click', function() {
+  selectedRole = 'student';
+  $('loginStudentBtn').className = 'role-toggle-btn active-student';
+  $('loginTeacherBtn').className = 'role-toggle-btn';
+  $('loginBtn').className = 'btn btn-primary';
+  $('loginBtn').textContent = 'Sign In';
+});
+
+$('loginTeacherBtn').addEventListener('click', function() {
+  selectedRole = 'teacher';
+  $('loginTeacherBtn').className = 'role-toggle-btn active-teacher';
+  $('loginStudentBtn').className = 'role-toggle-btn';
+  $('loginBtn').className = 'btn btn-teacher';
+  $('loginBtn').textContent = '👨‍🏫 Sign In as Teacher';
+});
+
+// Signup role toggle
+$('signupStudentBtn').addEventListener('click', function() {
+  selectedRole = 'student';
+  $('signupStudentBtn').className = 'role-toggle-btn active-student';
+  $('signupTeacherBtn').className = 'role-toggle-btn';
+  $('studentCourseGroup').style.display = 'block';
+  $('teacherDepartmentGroup').style.display = 'none';
+  $('signupBtn').className = 'btn btn-primary';
+  $('signupBtn').textContent = 'Create Account';
+  $('signupBtn').disabled = false;
+  $('signupCourse').required = true;
+});
+
+$('signupTeacherBtn').addEventListener('click', function() {
+  selectedRole = 'teacher';
+  $('signupTeacherBtn').className = 'role-toggle-btn active-teacher';
+  $('signupStudentBtn').className = 'role-toggle-btn';
+  $('studentCourseGroup').style.display = 'none';
+  $('teacherDepartmentGroup').style.display = 'block';
+  $('signupBtn').className = 'btn btn-teacher';
+  $('signupBtn').textContent = '👨‍🏫 Create Teacher Account';
+  $('signupBtn').disabled = false;
+  $('signupCourse').required = false;
+});
+
+// ===== THEME =====
 const themeToggles = document.querySelectorAll('.theme-toggle');
-
 function setTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
   localStorage.setItem('theme', theme);
-  themeToggles.forEach(btn => btn.textContent = theme === 'dark' ? '☀️' : '🌙');
+  themeToggles.forEach(b => b.textContent = theme === 'dark' ? '☀️' : '🌙');
+  const glowColor = theme === 'dark' ? 'rgba(79, 70, 229, 0.12)' : 'rgba(79, 70, 229, 0.08)';
+  document.documentElement.style.setProperty('--glow-color', glowColor);
 }
-
 function toggleTheme() {
   const current = document.documentElement.getAttribute('data-theme') || 'light';
   setTheme(current === 'dark' ? 'light' : 'dark');
 }
+themeToggles.forEach(b => b.addEventListener('click', toggleTheme));
+setTheme(localStorage.getItem('theme') || 'light');
 
-themeToggles.forEach(btn => btn.addEventListener('click', toggleTheme));
-const saved = localStorage.getItem('theme');
-setTheme(saved || 'light');
-
-// ============================================
-// PASSWORD SHOW/HIDE
-// ============================================
-document.querySelectorAll('.show-password').forEach(btn => {
-  btn.addEventListener('click', function(e) {
-    e.preventDefault();
-    const input = this.closest('.password-box').querySelector('input');
-    if (input.type === 'password') {
-      input.type = 'text';
-      this.textContent = '🙈';
-    } else {
-      input.type = 'password';
-      this.textContent = '👁️';
-    }
+// ===== PASSWORD TOGGLE =====
+document.querySelectorAll('.toggle-pw').forEach(btn => {
+  btn.addEventListener('click', function() {
+    const input = document.getElementById(this.dataset.target);
+    input.type = input.type === 'password' ? 'text' : 'password';
+    this.textContent = input.type === 'password' ? '👁' : '🙈';
   });
 });
 
-// ============================================
-// PAGE NAVIGATION
-// ============================================
-document.getElementById('showSignup').addEventListener('click', e => {
+// ===== NAVIGATION =====
+$('showSignup')?.addEventListener('click', e => { e.preventDefault(); loginPage.style.display = 'none'; signupPage.style.display = 'flex'; });
+$('showLogin')?.addEventListener('click', e => { e.preventDefault(); signupPage.style.display = 'none'; loginPage.style.display = 'flex'; });
+$('backFromReset')?.addEventListener('click', e => { e.preventDefault(); forgotModal.style.display = 'none'; loginPage.style.display = 'flex'; });
+$('closeForgot')?.addEventListener('click', () => forgotModal.style.display = 'none');
+$('forgotLink')?.addEventListener('click', e => {
   e.preventDefault();
-  document.getElementById('loginPage').style.display = 'none';
-  document.getElementById('signupPage').style.display = 'flex';
+  const email = $('loginEmail').value;
+  if (email) $('resetEmail').value = email;
+  forgotModal.style.display = 'flex';
 });
-document.getElementById('showLogin').addEventListener('click', e => {
-  e.preventDefault();
-  document.getElementById('signupPage').style.display = 'none';
-  document.getElementById('loginPage').style.display = 'flex';
-});
+forgotModal?.addEventListener('click', e => { if (e.target === forgotModal) forgotModal.style.display = 'none'; });
 
-// ============================================
-// SIGNUP
-// ============================================
-const signupForm = document.getElementById('signupForm');
-const signupBtn = document.getElementById('signupBtn');
-const signupError = document.getElementById('signupError');
-const signupSuccess = document.getElementById('signupSuccess');
+// ===== TOAST NOTIFICATION =====
+function showToast(message, type = 'info') {
+  const existing = document.querySelector('.toast-container');
+  if (existing) existing.remove();
+  
+  const container = document.createElement('div');
+  container.className = `toast-container ${type}`;
+  
+  const icons = {
+    success: '✅',
+    error: '❌',
+    info: 'ℹ️'
+  };
+  
+  container.innerHTML = `
+    <span style="font-size:20px;">${icons[type] || 'ℹ️'}</span>
+    <span style="font-size:14px;font-weight:500;">${message}</span>
+  `;
+  
+  document.body.appendChild(container);
+  
+  setTimeout(() => {
+    container.style.opacity = '0';
+    container.style.transform = 'translateX(100px)';
+    setTimeout(() => container.remove(), 300);
+  }, 3000);
+}
 
-signupForm.addEventListener('submit', async function(e) {
-  e.preventDefault();
-  const name = document.getElementById('signupName').value.trim();
-  const email = document.getElementById('signupEmail').value.trim();
-  const password = document.getElementById('signupPassword').value.trim();
-  const confirm = document.getElementById('signupConfirmPassword').value.trim();
-  
-  signupError.style.display = 'none';
-  signupSuccess.style.display = 'none';
-  
-  if (!name || !email || !password || !confirm) {
-    signupError.textContent = 'Please fill in all fields.';
-    signupError.style.display = 'block';
-    return;
-  }
-  if (!email.includes('@')) {
-    signupError.textContent = 'Please enter a valid email.';
-    signupError.style.display = 'block';
-    return;
-  }
-  if (password.length < 6) {
-    signupError.textContent = 'Password must be at least 6 characters.';
-    signupError.style.display = 'block';
-    return;
-  }
-  if (password !== confirm) {
-    signupError.textContent = 'Passwords do not match.';
-    signupError.style.display = 'block';
-    return;
-  }
-  
-  signupBtn.disabled = true;
-  signupBtn.innerHTML = '<span class="loading-spinner"></span> Creating...';
-  
-  try {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    await setDoc(doc(db, 'users', userCredential.user.uid), {
-      name, email, photoURL: '', createdAt: new Date().toISOString()
-    });
-    signupSuccess.textContent = '✅ Account created! Please sign in.';
-    signupSuccess.style.display = 'block';
-    signupForm.reset();
-    setTimeout(() => {
-      document.getElementById('signupPage').style.display = 'none';
-      document.getElementById('loginPage').style.display = 'flex';
-      document.getElementById('loginEmail').value = email;
-    }, 1000);
-  } catch (error) {
-    let msg = 'Something went wrong.';
-    if (error.code === 'auth/email-already-in-use') msg = 'Email already registered.';
-    else if (error.code === 'auth/weak-password') msg = 'Password too weak (min 6 chars).';
-    signupError.textContent = msg;
-    signupError.style.display = 'block';
-  }
-  signupBtn.disabled = false;
-  signupBtn.innerHTML = 'Create Account';
-});
+// ===== HELPER: Get first name only =====
+function getFirstName(fullName) {
+  if (!fullName) return '';
+  const trimmed = fullName.trim();
+  if (!trimmed) return '';
+  const parts = trimmed.split(/\s+/);
+  const first = parts[0];
+  return first.charAt(0).toUpperCase() + first.slice(1);
+}
 
-// ============================================
-// LOGIN - INSTANT
-// ============================================
-const loginForm = document.getElementById('loginForm');
-const loginBtn = document.getElementById('loginBtn');
-const loginError = document.getElementById('loginError');
-const loginSuccess = document.getElementById('loginSuccess');
+// ===== AUTH STATE =====
+let currentUser = null;
+let chatUnsubscribe = null, typingUnsubscribe = null, presenceUnsubscribe = null;
+let userRole = 'student';
+let isLoggingIn = false;
+let isInitialLoad = true;
 
-async function showDashboard(user) {
+function getGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning 🌅';
+  if (hour < 17) return 'Good afternoon ☀️';
+  return 'Good evening 🌙';
+}
+
+async function loadDashboard(user) {
+  currentUser = user;
   const email = user.email;
-  const name = email.split('@')[0];
-  const capName = name.charAt(0).toUpperCase() + name.slice(1);
   
-  document.getElementById('welcomeName').textContent = capName;
-  document.getElementById('profileName').textContent = capName;
-  document.getElementById('profileFullName').textContent = capName;
-  document.getElementById('dashboardUserName').textContent = capName;
-  document.getElementById('profileEmail').textContent = email;
-  document.getElementById('profileFullEmail').textContent = email;
+  let displayName = email.split('@')[0];
+  displayName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
+
+  document.querySelector('.welcome-text').textContent = getGreeting() + ' 👋';
+
+  let courseLabel = 'Computer Science';
+  let courseKey = 'computer-science';
+  let role = 'student';
+  let department = '';
   
-  const avatars = ['miniAvatar', 'profileAvatar', 'profileUploadPreview'];
-  avatars.forEach(id => {
-    const el = document.getElementById(id);
-    if (el) {
-      el.src = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Ccircle cx='100' cy='100' r='100' fill='%23667eea'/%3E%3Ctext x='50%25' y='55%25' font-size='80' fill='white' font-family='Arial' text-anchor='middle' dominant-baseline='central'%3E${capName.charAt(0)}%3C/text%3E%3C/svg%3E`;
-    }
-  });
-  
-  if (user.metadata?.creationTime) {
-    const d = new Date(user.metadata.creationTime);
-    document.getElementById('joinedDate').textContent = d.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
-  }
-  
-  loginPage.style.display = 'none';
-  dashboardPage.style.display = 'block';
-  
-  // Background Firestore sync
   try {
-    const ref = doc(db, 'users', user.uid);
-    const snap = await getDoc(ref);
+    const snap = await getDoc(doc(db, 'users', user.uid));
     if (snap.exists()) {
       const data = snap.data();
+      role = data.role || 'student';
+      courseKey = data.course || 'computer-science';
+      courseLabel = data.courseLabel || 'Computer Science';
+      department = data.department || 'Computer Science';
+      userRole = role;
+      
       if (data.photoURL) {
-        avatars.forEach(id => {
-          const el = document.getElementById(id);
+        ['miniAvatar', 'profileAvatar', 'profileUploadPreview'].forEach(id => {
+          const el = $(id);
           if (el) el.src = data.photoURL;
         });
       }
-      if (data.name && data.name !== capName) {
-        const n = data.name.charAt(0).toUpperCase() + data.name.slice(1);
-        document.getElementById('welcomeName').textContent = n;
-        document.getElementById('profileName').textContent = n;
-        document.getElementById('profileFullName').textContent = n;
-        document.getElementById('dashboardUserName').textContent = n;
+      
+      if (data.name) {
+        displayName = getFirstName(data.name);
+        ['welcomeName', 'profileName', 'userName', 'fullName'].forEach(id => {
+          const el = $(id);
+          if (el) el.textContent = displayName;
+        });
       }
-    } else {
-      await setDoc(ref, { name: capName, email: user.email, photoURL: '', createdAt: new Date().toISOString() });
     }
-  } catch (e) { console.warn('Background sync:', e); }
+  } catch(e) { 
+    console.warn('User data load:', e); 
+  }
+
+  ['welcomeName', 'profileName', 'userName', 'fullName'].forEach(id => {
+    const el = $(id);
+    if (el) el.textContent = displayName;
+  });
+  ['profileEmail', 'fullEmail'].forEach(id => {
+    const el = $(id);
+    if (el) el.textContent = email;
+  });
+
+  const isTeacher = role === 'teacher';
+  
+  if (isTeacher) {
+    if ($('userRoleDisplay')) $('userRoleDisplay').innerHTML = `👨‍🏫 Teacher <span class="teacher-role-badge">${department}</span>`;
+    if ($('profileRoleValue')) $('profileRoleValue').textContent = '👨‍🏫 Teacher';
+    if ($('profileRoleDisplay')) $('profileRoleDisplay').textContent = '👨‍🏫 Teacher';
+    if ($('profileRoleBadge')) $('profileRoleBadge').style.display = 'inline-block';
+    
+    document.querySelectorAll('.teacher-only').forEach(el => el.style.display = 'flex');
+    
+    $('welcomeBanner').className = 'welcome teacher-welcome';
+    $('welcomeBanner').querySelector('h1').textContent = '👨‍🏫 Teacher Dashboard';
+    $('dashboardSubtitle').textContent = `Manage your courses and students • ${department}`;
+    
+    $('courseCount').textContent = '3';
+    $('courseCount').parentElement.querySelector('p').textContent = 'Teaching';
+    $('completedCount').textContent = '45';
+    $('completedCount').parentElement.querySelector('p').textContent = 'Students';
+    $('pendingCount').textContent = '2';
+    $('pendingCount').parentElement.querySelector('p').textContent = "Today's Classes";
+    
+    $('profileCourseDisplay').textContent = department;
+    const profileDepartmentEl = $('profileDepartment');
+    if (profileDepartmentEl) profileDepartmentEl.textContent = department;
+    
+  } else {
+    if ($('userRoleDisplay')) $('userRoleDisplay').innerHTML = `🎯 Student <span class="course-badge" id="courseBadge">${courseLabel}</span>`;
+    if ($('profileRoleValue')) $('profileRoleValue').textContent = 'Student';
+    if ($('profileRoleDisplay')) $('profileRoleDisplay').textContent = 'Student';
+    if ($('profileRoleBadge')) $('profileRoleBadge').style.display = 'none';
+    
+    document.querySelectorAll('.teacher-only').forEach(el => el.style.display = 'none');
+    
+    $('welcomeBanner').className = 'welcome';
+    $('welcomeBanner').querySelector('h1').textContent = '📊 Your Dashboard';
+    $('dashboardSubtitle').textContent = "Here's your academic overview";
+    
+    $('courseCount').textContent = '6';
+    $('courseCount').parentElement.querySelector('p').textContent = 'Enrolled';
+    $('completedCount').textContent = '4';
+    $('completedCount').parentElement.querySelector('p').textContent = 'Completed';
+    $('pendingCount').textContent = '2';
+    $('pendingCount').parentElement.querySelector('p').textContent = 'Pending';
+    
+    $('profileCourseDisplay').textContent = courseLabel;
+    const profileDepartmentEl = $('profileDepartment');
+    if (profileDepartmentEl) profileDepartmentEl.textContent = courseLabel;
+  }
+
+  const courseEmoji = getCourseEmoji(courseKey);
+  const courseDisplay = `${courseEmoji} ${courseLabel}`;
+  
+  const courseBadge = $('courseBadge');
+  if (courseBadge) courseBadge.textContent = courseLabel;
+  
+  const profileCourseBadge = $('profileCourseBadge');
+  if (profileCourseBadge) profileCourseBadge.textContent = isTeacher ? `👨‍🏫 ${department}` : courseDisplay;
+
+  const avatarSrc = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Ccircle cx='100' cy='100' r='100' fill='%234f46e5'/%3E%3Ctext x='50%25' y='55%25' font-size='80' fill='white' font-family='Arial' text-anchor='middle' dominant-baseline='central'%3E${displayName.charAt(0)}%3C/text%3E%3C/svg%3E`;
+  ['miniAvatar', 'profileAvatar', 'profileUploadPreview'].forEach(id => {
+    const el = $(id);
+    if (el) el.src = avatarSrc;
+  });
+
+  if (user.metadata?.creationTime) {
+    const d = new Date(user.metadata.creationTime);
+    $('joinedDate').textContent = d.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+  }
+
+  loginPage.style.display = 'none';
+  signupPage.style.display = 'none';
+  dashboardPage.style.display = 'block';
+
+  setupPresence(user);
+  setupChatListener();
+  setupTypingListener(user);
+  
+  setInterval(() => {
+    document.querySelector('.welcome-text').textContent = getGreeting() + ' 👋';
+  }, 60000);
 }
 
-loginForm.addEventListener('submit', async function(e) {
-  e.preventDefault();
-  const email = document.getElementById('loginEmail').value.trim();
-  const password = document.getElementById('loginPassword').value.trim();
+function getCourseEmoji(courseKey) {
+  const emojis = {
+    'computer-science': '🖥️',
+    'data-science': '📊',
+    'artificial-intelligence': '🤖',
+    'cybersecurity': '🔒',
+    'software-engineering': '⚡',
+    'information-technology': '💻',
+    'business-analytics': '📈',
+    'digital-media': '🎨',
+    'game-development': '🎮',
+    'cloud-computing': '☁️'
+  };
+  return emojis[courseKey] || '📚';
+}
+
+// ===== AUTH STATE OBSERVER =====
+onAuthStateChanged(auth, async user => {
+  loadingScreen.style.opacity = '0';
+  setTimeout(() => loadingScreen.style.display = 'none', 400);
   
-  loginError.style.display = 'none';
-  loginSuccess.style.display = 'none';
-  
-  if (!email || !password) {
-    loginError.textContent = 'Please fill in all fields.';
-    loginError.style.display = 'block';
-    return;
-  }
-  if (!email.includes('@')) {
-    loginError.textContent = 'Please enter a valid email.';
-    loginError.style.display = 'block';
-    return;
-  }
-  
-  loginBtn.disabled = true;
-  loginBtn.innerHTML = '<span class="loading-spinner"></span> Signing in...';
-  
-  try {
-    const cred = await signInWithEmailAndPassword(auth, email, password);
-    loginSuccess.textContent = '✅ Login successful!';
-    loginSuccess.style.display = 'block';
-    await showDashboard(cred.user);
-    loginBtn.disabled = false;
-    loginBtn.innerHTML = 'Sign In';
-  } catch (error) {
-    let msg = 'Invalid email or password.';
-    if (error.code === 'auth/user-not-found') msg = 'No account found.';
-    else if (error.code === 'auth/wrong-password') msg = 'Incorrect password.';
-    else if (error.code === 'auth/too-many-requests') msg = 'Too many attempts. Try later.';
-    loginError.textContent = msg;
-    loginError.style.display = 'block';
-    loginBtn.disabled = false;
-    loginBtn.innerHTML = 'Sign In';
+  if (user) {
+    console.log("✅ User is signed in:", user.email);
+    
+    if (!isLoggingIn && (loginPage.style.display !== 'none' || dashboardPage.style.display === 'none')) {
+      await loadDashboard(user);
+      
+      if (isInitialLoad) {
+        const snap = await getDoc(doc(db, 'users', user.uid));
+        const name = snap.exists() && snap.data().name ? getFirstName(snap.data().name) : user.email.split('@')[0];
+        showToast('👋 Welcome back, ' + name + '!', 'success');
+        isInitialLoad = false;
+      }
+    }
+  } else {
+    console.log("❌ User is signed out");
+    
+    if (!isLoggingIn) {
+      loginPage.style.display = 'flex';
+      signupPage.style.display = 'none';
+      dashboardPage.style.display = 'none';
+      
+      if (chatUnsubscribe) { chatUnsubscribe(); chatUnsubscribe = null; }
+      if (typingUnsubscribe) { typingUnsubscribe(); typingUnsubscribe = null; }
+      if (presenceUnsubscribe) { presenceUnsubscribe(); presenceUnsubscribe = null; }
+      
+      if (currentUser) {
+        set(dbRef(rtdb, 'presence/' + currentUser.uid), null);
+      }
+      
+      isInitialLoad = true;
+    }
   }
 });
 
-// ============================================
-// FORGOT PASSWORD
-// ============================================
-document.getElementById('forgotPassword').addEventListener('click', async function(e) {
+// ===== LOGIN =====
+$('loginForm').addEventListener('submit', async e => {
   e.preventDefault();
-  const email = document.getElementById('loginEmail').value.trim();
-  if (!email) {
-    loginError.textContent = 'Enter your email first.';
-    loginError.style.display = 'block';
+
+  const email = $('loginEmail').value.trim();
+  const password = $('loginPassword').value;
+  const error = $('loginError');
+  const success = $('loginSuccess');
+  const btn = $('loginBtn');
+
+  error.style.display = 'none';
+  success.style.display = 'none';
+
+  if (!email || !password) {
+    error.textContent = 'Please fill in all fields.';
+    error.style.display = 'block';
     return;
   }
+
+  btn.disabled = true;
+  btn.innerHTML = '⏳ Signing in...';
+  isLoggingIn = true;
+
+  try {
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+
+    const userDoc = await getDoc(doc(db, 'users', user.uid));
+    const userData = userDoc.exists() ? userDoc.data() : {};
+    const role = userData.role || 'student';
+
+    if (selectedRole === 'teacher' && role !== 'teacher') {
+      await signOut(auth);
+      error.textContent = '❌ This account is not a teacher account. Please switch to Student mode.';
+      error.style.display = 'block';
+      btn.disabled = false;
+      btn.innerHTML = selectedRole === 'teacher' ? '👨‍🏫 Sign In as Teacher' : 'Sign In';
+      isLoggingIn = false;
+      return;
+    }
+
+    if (selectedRole === 'student' && role === 'teacher') {
+      await signOut(auth);
+      error.textContent = '❌ This is a teacher account. Please switch to Teacher mode.';
+      error.style.display = 'block';
+      btn.disabled = false;
+      btn.innerHTML = selectedRole === 'teacher' ? '👨‍🏫 Sign In as Teacher' : 'Sign In';
+      isLoggingIn = false;
+      return;
+    }
+
+    await loadDashboard(user);
+    isLoggingIn = false;
+    
+    const name = userData.name ? getFirstName(userData.name) : email.split('@')[0];
+    showToast('✅ Welcome back, ' + name + '!', 'success');
+
+  } catch (err) {
+    console.error('Firebase login error:', err);
+
+    let msg = 'Unable to sign in.';
+    switch (err.code) {
+      case 'auth/invalid-credential':
+      case 'auth/wrong-password':
+      case 'auth/user-not-found':
+        msg = 'Invalid email or password.';
+        break;
+      case 'auth/invalid-email':
+        msg = 'Invalid email format.';
+        break;
+      case 'auth/too-many-requests':
+        msg = 'Too many login attempts. Please try again later.';
+        break;
+      case 'auth/user-disabled':
+        msg = 'This account has been disabled.';
+        break;
+      case 'auth/network-request-failed':
+        msg = 'Network error. Check your internet connection and try again.';
+        break;
+      default:
+        msg = err.message || msg;
+    }
+
+    error.textContent = '❌ ' + msg;
+    error.style.display = 'block';
+    loginPage.style.display = 'flex';
+    signupPage.style.display = 'none';
+    dashboardPage.style.display = 'none';
+    isLoggingIn = false;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = selectedRole === 'teacher' ? '👨‍🏫 Sign In as Teacher' : 'Sign In';
+  }
+});
+
+// ===== SIGNUP =====
+$('signupForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const name = $('signupName').value.trim();
+  const email = $('signupEmail').value.trim();
+  const password = $('signupPassword').value.trim();
+  const confirm = $('signupConfirm').value.trim();
+  const course = $('signupCourse').value;
+  const courseLabel = $('signupCourse').selectedOptions[0]?.text || 'Computer Science';
+  const department = $('signupDepartment')?.value || 'Computer Science';
+  const role = selectedRole;
+  
+  const error = $('signupError');
+  const success = $('signupSuccess');
+  error.style.display = 'none';
+  success.style.display = 'none';
+  
+  if (!name || !email || !password || !confirm) {
+    error.textContent = 'Please fill in all fields.';
+    error.style.display = 'block';
+    return;
+  }
+  
+  if (role === 'student' && !course) {
+    error.textContent = 'Please select your course.';
+    error.style.display = 'block';
+    return;
+  }
+  
+  if (password.length < 6) {
+    error.textContent = 'Password must be at least 6 characters.';
+    error.style.display = 'block';
+    return;
+  }
+  
+  if (password !== confirm) {
+    error.textContent = 'Passwords do not match.';
+    error.style.display = 'block';
+    return;
+  }
+  
+  const btn = $('signupBtn');
+  btn.disabled = true;
+  btn.innerHTML = '⏳ Creating...';
+  
+  try {
+    const cred = await createUserWithEmailAndPassword(auth, email, password);
+    
+    const userData = {
+      name,
+      email,
+      role: role,
+      photoURL: '',
+      createdAt: new Date().toISOString()
+    };
+    
+    if (role === 'student') {
+      userData.course = course;
+      userData.courseLabel = courseLabel;
+      userData.enrolledCourses = [course];
+    } else {
+      userData.department = department;
+      userData.courses = [];
+    }
+    
+    await setDoc(doc(db, 'users', cred.user.uid), userData);
+    
+    const roleMessage = role === 'teacher' ? 'Teacher' : 'Student';
+    success.textContent = `✅ ${roleMessage} account created! Please sign in.`;
+    success.style.display = 'block';
+    
+    $('signupForm').reset();
+    
+    await signOut(auth);
+    
+    setTimeout(() => {
+      signupPage.style.display = 'none';
+      loginPage.style.display = 'flex';
+      $('loginEmail').value = email;
+      
+      if (role === 'teacher') {
+        $('loginTeacherBtn').click();
+      } else {
+        $('loginStudentBtn').click();
+      }
+    }, 1500);
+    
+  } catch (err) {
+    console.error('Signup error:', err);
+    let msg = 'Something went wrong.';
+    if (err.code === 'auth/email-already-in-use') msg = 'Email already registered. Please sign in.';
+    else if (err.code === 'auth/weak-password') msg = 'Password too weak.';
+    error.textContent = '❌ ' + msg;
+    error.style.display = 'block';
+  }
+  
+  btn.disabled = false;
+  btn.innerHTML = role === 'teacher' ? '👨‍🏫 Create Teacher Account' : 'Create Account';
+});
+
+// ===== RESET PASSWORD =====
+$('resetForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const email = $('resetEmail').value.trim();
+  const error = $('resetError');
+  const success = $('resetSuccess');
+  
+  error.style.display = 'none';
+  success.style.display = 'none';
+  
+  if (!email) { 
+    error.textContent = 'Please enter your email.'; 
+    error.style.display = 'block'; 
+    return; 
+  }
+  
+  const btn = $('resetBtn');
+  btn.disabled = true;
+  btn.innerHTML = '⏳ Sending...';
+  
   try {
     await sendPasswordResetEmail(auth, email);
-    loginSuccess.textContent = `✅ Reset link sent to ${email}`;
-    loginSuccess.style.display = 'block';
-    setTimeout(() => loginSuccess.style.display = 'none', 5000);
-  } catch {
-    loginError.textContent = 'Error sending reset email.';
-    loginError.style.display = 'block';
+    success.textContent = `✅ Reset link sent to ${email}! Check your inbox.`;
+    success.style.display = 'block';
+    setTimeout(() => { forgotModal.style.display = 'none'; }, 3000);
+  } catch (err) {
+    let msg = 'Failed to send. Try again.';
+    if (err.code === 'auth/user-not-found') msg = 'No account found with this email.';
+    error.textContent = '❌ ' + msg;
+    error.style.display = 'block';
   }
+  
+  btn.disabled = false;
+  btn.innerHTML = 'Send Reset Link';
 });
 
-// ============================================
-// AUTH STATE
-// ============================================
-onAuthStateChanged(auth, async (user) => {
-  loadingScreen.style.opacity = '0';
-  setTimeout(() => loadingScreen.style.display = 'none', 500);
-  if (user) {
-    if (loginPage.style.display !== 'none') await showDashboard(user);
-  } else {
-    loginPage.style.display = 'flex';
+// ===== PASSWORD RESET CONFIRMATION =====
+(async function handleResetConfirm() {
+  const params = new URLSearchParams(window.location.search);
+  const mode = params.get('mode');
+  const code = params.get('oobCode');
+  
+  if (mode === 'resetPassword' && code) {
+    loginPage.style.display = 'none';
+    signupPage.style.display = 'none';
     dashboardPage.style.display = 'none';
+    
+    const container = document.createElement('div');
+    container.id = 'resetContainer';
+    container.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;">
+        <div class="auth-card" style="max-width:380px;">
+          <div class="logo-wrap"><h1>🔑 New Password</h1><p>Enter your new password</p></div>
+          <div class="error-msg" id="newPwError"></div>
+          <div class="success-msg" id="newPwSuccess"></div>
+          <form id="newPwForm">
+            <div class="form-group">
+              <label>New Password</label>
+              <div class="password-wrapper">
+                <input type="password" id="newPw" placeholder="Min 6 characters" required>
+                <button type="button" class="toggle-pw" data-target="newPw">👁</button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Confirm Password</label>
+              <input type="password" id="newPwConfirm" placeholder="Confirm" required>
+            </div>
+            <button type="submit" class="btn btn-primary" id="newPwBtn" style="width:100%;justify-content:center;">Reset Password</button>
+          </form>
+        </div>
+      </div>
+    `;
+    document.body.prepend(container);
+    
+    document.getElementById('newPwForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      const pw = document.getElementById('newPw').value;
+      const confirm = document.getElementById('newPwConfirm').value;
+      const error = document.getElementById('newPwError');
+      const success = document.getElementById('newPwSuccess');
+      
+      error.style.display = 'none';
+      success.style.display = 'none';
+      
+      if (pw.length < 6) {
+        error.textContent = 'Password must be at least 6 characters.';
+        error.style.display = 'block';
+        return;
+      }
+      
+      if (pw !== confirm) {
+        error.textContent = 'Passwords do not match.';
+        error.style.display = 'block';
+        return;
+      }
+      
+      const btn = document.getElementById('newPwBtn');
+      btn.disabled = true;
+      btn.innerHTML = '⏳ Resetting...';
+      
+      try {
+        await confirmPasswordReset(auth, code, pw);
+        success.textContent = '✅ Password reset successful!';
+        success.style.display = 'block';
+        setTimeout(() => {
+          container.remove();
+          loginPage.style.display = 'flex';
+          window.history.replaceState({}, '', window.location.pathname);
+        }, 1500);
+      } catch (err) {
+        error.textContent = '❌ Invalid or expired link. Please request a new one.';
+        error.style.display = 'block';
+      }
+      
+      btn.disabled = false;
+      btn.innerHTML = 'Reset Password';
+    });
+  }
+})();
+
+// ===== PROFILE PICTURE UPLOAD =====
+$('profilePicInput')?.addEventListener('change', async function() {
+  const file = this.files[0];
+  if (!file) return;
+  if (!file.type.startsWith('image/')) {
+    $('uploadStatus').textContent = '❌ Please select an image.';
+    return;
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    $('uploadStatus').textContent = '❌ Max 5MB.';
+    return;
+  }
+  const user = auth.currentUser;
+  if (!user) return;
+  
+  $('uploadStatus').textContent = '⏳ Uploading...';
+  try {
+    const storageRef = ref(storage, `profilePictures/${user.uid}`);
+    await uploadBytes(storageRef, file);
+    const url = await getDownloadURL(storageRef);
+    await updateDoc(doc(db, 'users', user.uid), { photoURL: url });
+    
+    ['miniAvatar', 'profileAvatar', 'profileUploadPreview'].forEach(id => {
+      const el = $(id);
+      if (el) el.src = url;
+    });
+    
+    $('uploadStatus').textContent = '✅ Photo updated!';
+    showToast('✅ Profile photo updated!', 'success');
+  } catch(e) {
+    $('uploadStatus').textContent = '❌ Upload failed.';
+    showToast('❌ Upload failed. Please try again.', 'error');
   }
 });
 
-// ============================================
-// PROFILE PICTURE UPLOAD
-// ============================================
-const fileInput = document.getElementById('profilePictureInput');
-const uploadStatus = document.getElementById('uploadStatus');
-if (fileInput) {
-  fileInput.addEventListener('change', async function(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      uploadStatus.textContent = '❌ Please select an image.';
-      uploadStatus.style.color = '#f5576c';
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      uploadStatus.textContent = '❌ Max 5MB.';
-      uploadStatus.style.color = '#f5576c';
-      return;
-    }
-    const user = auth.currentUser;
-    if (!user) { uploadStatus.textContent = '❌ Login required.'; return; }
-    
-    uploadStatus.textContent = '⏳ Uploading...';
-    uploadStatus.style.color = 'var(--text-muted)';
-    
-    try {
-      const storageRef = ref(storage, `profilePictures/${user.uid}`);
-      await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(storageRef);
-      await updateDoc(doc(db, 'users', user.uid), { photoURL: url });
-      ['miniAvatar', 'profileAvatar', 'profileUploadPreview'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.src = url;
+// ===== PRESENCE =====
+function setupPresence(user) {
+  const presenceRef = dbRef(rtdb, 'presence/' + user.uid);
+  set(presenceRef, { online: true, name: user.email.split('@')[0], lastSeen: rtdbServerTimestamp() });
+  onDisconnect(presenceRef).set({ online: false, name: user.email.split('@')[0], lastSeen: rtdbServerTimestamp() });
+  
+  if (presenceUnsubscribe) presenceUnsubscribe();
+  presenceUnsubscribe = onValue(dbRef(rtdb, 'presence'), snap => {
+    const data = snap.val();
+    let count = 0;
+    if (data) {
+      Object.values(data).forEach(p => { 
+        if (p && p.online === true) count++; 
       });
-      uploadStatus.textContent = '✅ Photo updated!';
-      uploadStatus.style.color = '#667eea';
-    } catch (error) {
-      uploadStatus.textContent = '❌ Upload failed.';
-      uploadStatus.style.color = '#f5576c';
     }
+    $('onlineCount').textContent = `🟢 ${count} online`;
   });
 }
 
-// ============================================
-// LOGOUT
-// ============================================
-document.getElementById('logoutBtn').addEventListener('click', async function() {
-  if (confirm('Logout?')) await signOut(auth);
+// ===== TYPING =====
+let typingTimeout = null;
+
+function setupTypingListener(user) {
+  if (typingUnsubscribe) typingUnsubscribe();
+  
+  typingUnsubscribe = onSnapshot(
+    query(collection(db, 'typing'), where('uid', '!=', user.uid)),
+    snap => {
+      const typingUsers = [];
+      const now = Date.now();
+      
+      snap.forEach(doc => {
+        const d = doc.data();
+        if (d.typing && d.timestamp) {
+          const ts = d.timestamp.toMillis ? d.timestamp.toMillis() : d.timestamp;
+          if (now - ts < 5000) {
+            typingUsers.push(d.name || 'Someone');
+          }
+        }
+      });
+      
+      const indicator = $('typingIndicator');
+      if (typingUsers.length > 0) {
+        const nameSpan = $('typingName');
+        const names = typingUsers.slice(0, 2).join(', ');
+        const suffix = typingUsers.length > 2 ? ` and ${typingUsers.length - 2} others` : '';
+        nameSpan.textContent = names + suffix;
+        indicator.style.display = 'flex';
+      } else {
+        indicator.style.display = 'none';
+      }
+    }
+  );
+}
+
+async function setTyping(typing) {
+  if (!auth.currentUser) return;
+  const typingRef = doc(db, 'typing', auth.currentUser.uid);
+  
+  if (typing) {
+    const snap = await getDoc(doc(db, 'users', auth.currentUser.uid));
+    const rawName = snap.exists() && snap.data().name ? snap.data().name : auth.currentUser.email.split('@')[0];
+    const name = getFirstName(rawName);
+    await setDoc(typingRef, {
+      uid: auth.currentUser.uid,
+      name: name,
+      typing: true,
+      timestamp: serverTimestamp()
+    });
+  } else {
+    await deleteDoc(typingRef).catch(() => {});
+  }
+}
+
+$('chatInput')?.addEventListener('input', () => {
+  if (!auth.currentUser) return;
+  if (typingTimeout) clearTimeout(typingTimeout);
+  setTyping(true);
+  typingTimeout = setTimeout(() => {
+    setTyping(false);
+    typingTimeout = null;
+  }, 2000);
 });
 
-// ============================================
-// DASHBOARD NAVIGATION
-// ============================================
-const navItems = document.querySelectorAll('.nav-item:not(.logout-btn)');
-const views = {
-  dashboard: document.getElementById('view-dashboard'),
-  profile: document.getElementById('view-profile'),
-  courses: document.getElementById('view-courses'),
-  grades: document.getElementById('view-grades'),
-  messages: document.getElementById('view-messages')
-};
-navItems.forEach(item => {
+$('chatInput')?.addEventListener('blur', () => {
+  if (typingTimeout) {
+    clearTimeout(typingTimeout);
+    typingTimeout = null;
+  }
+  setTyping(false);
+});
+
+// ===== CHAT =====
+function setupChatListener() {
+  if (chatUnsubscribe) chatUnsubscribe();
+  
+  chatUnsubscribe = onSnapshot(
+    query(collection(db, 'messages'), orderBy('timestamp', 'asc')),
+    snap => {
+      const container = $('chatMessages');
+      if (!container) return;
+      
+      if (snap.empty) {
+        container.innerHTML = '<div class="empty">💬 No messages yet. Say hello!</div>';
+        return;
+      }
+      
+      let html = '';
+      snap.forEach(doc => {
+        const d = doc.data();
+        const isSelf = d.senderId === auth.currentUser?.uid;
+        const initial = (d.senderName || '?').charAt(0).toUpperCase();
+        const time = d.timestamp?.toDate?.() || new Date();
+        const timeStr = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const colors = ['#4f46e5','#7c3aed','#ec4899','#f59e0b','#10b981','#3b82f6'];
+        const color = colors[(d.senderName || '').length % colors.length];
+        
+        html += `
+          <div class="chat-msg ${isSelf ? 'self' : ''}">
+            <div class="avatar" style="background:${color}">${initial}</div>
+            <div class="bubble">
+              <div class="name">${d.senderName || 'Anonymous'}</div>
+              <div class="text">${d.text || ''}</div>
+              <span class="time">${timeStr}</span>
+            </div>
+          </div>
+        `;
+      });
+      
+      container.innerHTML = html;
+      container.scrollTop = container.scrollHeight;
+    },
+    err => {
+      console.error('Chat error:', err);
+      $('chatMessages').innerHTML = '<div class="empty" style="color:#dc2626;">⚠️ Error loading chat</div>';
+    }
+  );
+}
+
+async function sendMessage() {
+  const input = $('chatInput');
+  const text = input.value.trim();
+  if (!text || !auth.currentUser) return;
+  
+  const btn = $('sendBtn');
+  btn.disabled = true;
+  input.disabled = true;
+  
+  if (typingTimeout) {
+    clearTimeout(typingTimeout);
+    typingTimeout = null;
+  }
+  await setTyping(false);
+  
+  try {
+    const snap = await getDoc(doc(db, 'users', auth.currentUser.uid));
+    const rawName = snap.exists() && snap.data().name ? snap.data().name : auth.currentUser.email.split('@')[0];
+    const name = getFirstName(rawName);
+    await addDoc(collection(db, 'messages'), {
+      text,
+      senderId: auth.currentUser.uid,
+      senderName: name,
+      timestamp: serverTimestamp()
+    });
+    input.value = '';
+    input.focus();
+  } catch(e) {
+    console.error('Send error:', e);
+  }
+  
+  btn.disabled = false;
+  input.disabled = false;
+}
+
+$('sendBtn')?.addEventListener('click', sendMessage);
+$('chatInput')?.addEventListener('keydown', e => {
+  if (e.key === 'Enter') sendMessage();
+});
+
+// ===== REMEMBER ME =====
+const savedEmail = localStorage.getItem('rememberedEmail');
+if (savedEmail) {
+  $('loginEmail').value = savedEmail;
+  $('rememberMe').checked = true;
+}
+
+$('loginForm')?.addEventListener('submit', () => {
+  if ($('rememberMe').checked) {
+    localStorage.setItem('rememberedEmail', $('loginEmail').value.trim());
+  } else {
+    localStorage.removeItem('rememberedEmail');
+  }
+});
+
+// ===== NAVIGATION =====
+document.querySelectorAll('.nav-item:not(.logout-btn)').forEach(item => {
   item.addEventListener('click', function() {
-    navItems.forEach(n => n.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     this.classList.add('active');
-    const name = this.getAttribute('data-view');
-    Object.values(views).forEach(v => v?.classList.remove('active'));
-    if (views[name]) {
-      views[name].classList.add('active');
-      const titles = { dashboard: 'Dashboard', profile: 'Profile', courses: 'Courses', grades: 'Grades', messages: 'Messages' };
-      document.querySelector('.topbar h2').textContent = titles[name] || 'Dashboard';
+    const view = this.dataset.view;
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    const target = document.getElementById(`view-${view}`);
+    if (target) {
+      target.classList.add('active');
+      const titles = { 
+        dashboard: 'Dashboard',
+        profile: 'Profile',
+        courses: 'Courses',
+        grades: 'Grades',
+        messages: 'Messages',
+        chat: 'Live Chat',
+        attendance: 'Attendance',
+        students: 'Students'
+      };
+      const pageTitle = $('pageTitle');
+      if (pageTitle) pageTitle.textContent = titles[view] || 'Dashboard';
+      if (view === 'chat') {
+        setTimeout(() => {
+          const container = $('chatMessages');
+          if (container) container.scrollTop = container.scrollHeight;
+        }, 100);
+      }
     }
   });
 });
 
-console.log('✨ Student Hub – Aesthetic Edition loaded.');
+// ===== ATTENDANCE (Teacher) =====
+$('startAttendanceBtn')?.addEventListener('click', function() {
+  const course = $('teacherCourseSelect').value;
+  if (!course) {
+    alert('Please select a course first.');
+    return;
+  }
+  $('attendanceSession').style.display = 'block';
+  $('checkInCount').textContent = '0';
+  $('liveCheckIns').innerHTML = '<p style="color:var(--text-muted);font-size:13px;">⏳ Waiting for students to check in...</p>';
+  $('qrCodePlaceholder').innerHTML = '📱<br><span style="font-size:14px;color:var(--text-muted);">QR Code Active</span>';
+  this.textContent = '🔄 Session Active';
+  this.disabled = true;
+  showToast('✅ Attendance session started!', 'success');
+});
+
+$('stopAttendanceBtn')?.addEventListener('click', function() {
+  if (confirm('End this attendance session?')) {
+    $('attendanceSession').style.display = 'none';
+    $('startAttendanceBtn').textContent = '▶️ Start Attendance Session';
+    $('startAttendanceBtn').disabled = false;
+    showToast('⏹️ Attendance session ended.', 'info');
+  }
+});
+
+// ===== CUSTOM LOGOUT =====
+$('logoutBtn')?.addEventListener('click', function(e) {
+  e.preventDefault();
+  logoutModal.style.display = 'flex';
+});
+
+$('cancelLogoutBtn')?.addEventListener('click', function() {
+  logoutModal.style.display = 'none';
+});
+
+logoutModal?.addEventListener('click', function(e) {
+  if (e.target === this) {
+    this.style.display = 'none';
+  }
+});
+
+$('confirmLogoutBtn')?.addEventListener('click', async function() {
+  logoutModal.style.display = 'none';
+  
+  if (typingTimeout) {
+    clearTimeout(typingTimeout);
+    typingTimeout = null;
+  }
+  await setTyping(false);
+  
+  if (currentUser) {
+    set(dbRef(rtdb, 'presence/' + currentUser.uid), null);
+  }
+  
+  if (chatUnsubscribe) {
+    chatUnsubscribe();
+    chatUnsubscribe = null;
+  }
+  if (typingUnsubscribe) {
+    typingUnsubscribe();
+    typingUnsubscribe = null;
+  }
+  if (presenceUnsubscribe) {
+    presenceUnsubscribe();
+    presenceUnsubscribe = null;
+  }
+  
+  await signOut(auth);
+  showToast('👋 Logged out successfully.', 'info');
+});
+
+// ===== PASSWORD STRENGTH =====
+$('signupPassword')?.addEventListener('input', function() {
+  const pw = this.value;
+  const bar = $('strengthBar');
+  
+  if (!pw) {
+    bar.style.width = '0%';
+    bar.style.background = 'var(--border)';
+    return;
+  }
+  
+  let score = 0;
+  if (pw.length >= 6) score++;
+  if (pw.length >= 10) score++;
+  if (/[A-Z]/.test(pw)) score++;
+  if (/[0-9]/.test(pw)) score++;
+  if (/[^A-Za-z0-9]/.test(pw)) score++;
+  
+  const pct = Math.min((score / 5) * 100, 100);
+  const colors = ['#dc2626', '#f59e0b', '#22c55e', '#22c55e', '#3b82f6'];
+  bar.style.width = pct + '%';
+  bar.style.background = colors[Math.min(Math.floor(score / 1.5), 4)] || 'var(--border)';
+});
+
+console.log('🎓 Student Hub loaded successfully!');
 </script>
 </body>
 </html>
