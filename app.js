@@ -1278,9 +1278,28 @@ $('startAttendanceBtn')?.addEventListener('click', async function() {
   }
 });
 
+// Ensure QRCode library is loaded with fallback
+async function ensureQRCodeLoaded() {
+  if (window.QRCode && typeof window.QRCode.toCanvas === 'function') return;
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.1/qrcode.min.js';
+    s.onload = () => resolve();
+    s.onerror = () => {
+      const s2 = document.createElement('script');
+      s2.src = 'https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js';
+      s2.onload = () => resolve();
+      s2.onerror = reject;
+      document.head.appendChild(s2);
+    };
+    document.head.appendChild(s);
+  });
+}
+
 // ---------- TEACHER: ROTATING QR ----------
 async function startRotatingQR(sessionId, salt) {
   stopRotatingQR();
+  await ensureQRCodeLoaded().catch(e => console.error('Failed to load QRCode:', e));
   
   const rotate = async () => {
     if (activeSessionId !== sessionId) return;
@@ -1298,6 +1317,7 @@ async function startRotatingQR(sessionId, salt) {
     holder.innerHTML = '';
     
     try {
+      if (!window.QRCode) await ensureQRCodeLoaded();
       const canvas = document.createElement('canvas');
       await QRCode.toCanvas(canvas, payload, {
         width: 220,
