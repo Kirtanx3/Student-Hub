@@ -1494,8 +1494,22 @@ async function loadJsQR() {
   });
 }
 
-$('startScannerBtn')?.addEventListener('click', startScanner);
+let currentFacingMode = 'environment';
+
+$('startScannerBtn')?.addEventListener('click', () => startScanner());
 $('stopScannerBtn')?.addEventListener('click', stopScanner);
+$('flipCameraBtn')?.addEventListener('click', async () => {
+  currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
+  if (scannerStream) {
+    scannerStream.getTracks().forEach(t => t.stop());
+    scannerStream = null;
+  }
+  if (scanRafId) {
+    cancelAnimationFrame(scanRafId);
+    scanRafId = null;
+  }
+  await startScanner();
+});
 
 async function startScanner() {
   $('checkinIdle').style.display = 'none';
@@ -1504,9 +1518,14 @@ async function startScanner() {
   try {
     await loadJsQR();
     
-    scannerStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment' }
-    });
+    try {
+      scannerStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: currentFacingMode } }
+      });
+    } catch (camErr) {
+      // Fallback to any available video camera
+      scannerStream = await navigator.mediaDevices.getUserMedia({ video: true });
+    }
     
     const video = $('scannerVideo');
     video.srcObject = scannerStream;
@@ -1545,7 +1564,7 @@ async function startScanner() {
     setCheckinStatus('Point your camera at the teacher\'s QR code', 'info');
   } catch (err) {
     console.error('Camera error:', err);
-    setCheckinStatus('❌ Camera access denied or unavailable. Use manual code entry.', 'error');
+    setCheckinStatus('❌ Camera access denied or unavailable. Check camera permissions and try again.', 'error');
     stopScanner();
     $('checkinIdle').style.display = 'block';
   }
@@ -1665,6 +1684,7 @@ async function verifyAndCheckIn(sessionId, token, ts) {
     
     setCheckinStatus(`✅ Checked in successfully! You were ${Math.round(dist)}m from class.`, 'success');
     showToast('✅ Attendance recorded!', 'success');
+    playCheckinSuccessSound();
     
   } catch (err) {
     console.error('Check-in error:', err);
@@ -1758,3 +1778,112 @@ $('signupPassword')?.addEventListener('input', function() {
 console.log('🎓 Student Hub loaded successfully!');
 console.log('🔒 Secure QR Attendance System active.');
 console.log('📍 Location service: improved with GPS → network fallback.');
+
+// ---------- AUDIO & HAPTIC FEEDBACK ----------
+function playCheckinSuccessSound() {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (AudioContext) {
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+      osc.frequency.setValueAtTime(880, ctx.currentTime + 0.1); // A5
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.35);
+    }
+  } catch (e) {}
+  if (navigator.vibrate) {
+    try { navigator.vibrate([70, 40, 70]); } catch (e) {}
+  }
+}
+
+// ---------- EXPORT ATTENDANCE TO CSV ----------
+$('exportAttendanceCsvBtn')?.addEventListener('click', exportAttendanceCsv);
+$('exportStudentsCsvBtn')?.addEventListener('click', exportAllStudentsCsv);
+
+async function exportAttendanceCsv() {
+  if (!activeSessionId) {
+    showToast('No active attendance session to export.', 'info');
+    return;
+  }
+  
+  try {
+    showToast('Preparing CSV export...', 'info');
+    const snap = await getDocs(collection(db, 'attendanceSessions', activeSessionId, 'checkins'));
+    if (snap.empty) {
+      showToast('No student check-ins recorded yet.', 'info');
+      return;
+    }
+    
+    let csv = 'Student Name,Email,Timestamp,Distance From Class (m),Device ID\r\n';
+    snap.forEach(d => {
+      const data = d.data();
+      const name = `"${(data.name || 'Student').replace(/"/g, '""')}"`;
+      const email = `"${(data.email || '').replace(/"/g, '""')}"`;
+      const timeStr = data.at?.toDate
+        ? data.at.toDate().toLocaleString()
+        : new Date().toLocaleString();
+      const time = `"${timeStr.replace(/"/g, '""')}"`;
+      const dist = data.distanceFromClass != null ? data.distanceFromClass : '';
+      const deviceId = `"${(data.deviceId || '').replace(/"/g, '""')}"`;
+      csv += `${name},${email},${time},${dist},${deviceId}\r\n`;
+    });
+    
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `attendance_session_${activeSessionId.slice(0, 8)}_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('✅ Attendance exported to CSV!', 'success');
+  } catch (err) {
+    console.error('CSV export error:', err);
+    showToast('Failed to export CSV: ' + (err.message || 'Unknown error'), 'error');
+  }
+}
+
+// ---------- EXPORT ALL STUDENTS TO CSV ----------
+async function exportAllStudentsCsv() {
+  try {
+    showToast('Exporting student directory...', 'info');
+    const q = query(collection(db, 'users'), where('role', '==', 'student'));
+    const snap = await getDocs(q);
+    if (snap.empty) {
+      showToast('No enrolled students found.', 'info');
+      return;
+    }
+    
+    let csv = 'Full Name,Email,Course,Joined Date\r\n';
+    snap.forEach(d => {
+      const data = d.data();
+      const name = `"${(data.name || 'Student').replace(/"/g, '""')}"`;
+      const email = `"${(data.email || '').replace(/"/g, '""')}"`;
+      const course = `"${(data.courseLabel || data.course || '—').replace(/"/g, '""')}"`;
+      const joined = `"${(data.joined || '2025').replace(/"/g, '""')}"`;
+      csv += `${name},${email},${course},${joined}\r\n`;
+    });
+    
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `students_directory_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('✅ Student directory exported to CSV!', 'success');
+  } catch (err) {
+    console.error('Students export error:', err);
+    showToast('Failed to export students: ' + (err.message || 'Unknown error'), 'error');
+  }
+}

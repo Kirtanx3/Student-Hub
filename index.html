@@ -391,9 +391,16 @@
             <div class="scanner-frame">
               <video id="scannerVideo" playsinline></video>
               <div class="scan-line"></div>
+              <div class="scanner-reticle">
+                <span class="reticle-corner top-left"></span>
+                <span class="reticle-corner top-right"></span>
+                <span class="reticle-corner bottom-left"></span>
+                <span class="reticle-corner bottom-right"></span>
+              </div>
             </div>
-            <div style="text-align:center;">
-              <button class="btn btn-sm" id="stopScannerBtn">⏹️ Stop Camera</button>
+            <div class="scanner-actions">
+              <button class="btn btn-sm" id="flipCameraBtn" type="button">🔄 Flip Camera</button>
+              <button class="btn btn-sm btn-danger" id="stopScannerBtn" type="button">⏹️ Stop Camera</button>
             </div>
           </div>
 
@@ -435,6 +442,7 @@
                 <p style="color:var(--text-secondary);font-size:13px;">Refreshes every 8 seconds — screenshots won't work</p>
               </div>
               <div style="display:flex;align-items:center;gap:12px;">
+                <button class="btn btn-sm btn-export" id="exportAttendanceCsvBtn" type="button">📥 Export CSV</button>
                 <span class="session-status live" id="sessionStatus">Live</span>
                 <button class="btn btn-danger btn-sm" id="stopAttendanceBtn">⏹️ End Session</button>
               </div>
@@ -462,7 +470,10 @@
 
       <!-- VIEW: Students (Teacher Only) -->
       <div id="view-students" class="view">
-        <h2 style="margin-bottom:20px;">👨‍🎓 My Students</h2>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+          <h2>👨‍🎓 My Students</h2>
+          <button class="btn btn-sm btn-export" id="exportStudentsCsvBtn" type="button">📥 Export Students CSV</button>
+        </div>
         <div class="card">
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
             <h3>Enrolled Students</h3>
