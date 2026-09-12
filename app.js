@@ -1585,13 +1585,6 @@ async function handleScannedData(raw) {
   await verifyAndCheckIn(sessionId, token, ts);
 }
 
-// ---------- STUDENT: MANUAL CODE ----------
-$('manualCodeBtn')?.addEventListener('click', async () => {
-  const raw = $('manualCodeInput').value.trim();
-  if (!raw) return;
-  await handleScannedData(raw);
-});
-
 // ---------- CORE: VERIFY & CHECK-IN (IMPROVED) ----------
 async function verifyAndCheckIn(sessionId, token, ts) {
   setCheckinStatus('🔍 Verifying...', 'info');

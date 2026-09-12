@@ -1,0 +1,25 @@
+﻿# Executables and Installers
+*.exe
+*.msi
+*.dll
+
+# Environment and secrets
+.env
+.env.*
+*.local
+
+# Logs and debugging
+*.log
+npm-debug.log*
+
+# System files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE & Editor files
+.vscode/
+.idea/
+
+# Dependencies
+node_modules/
