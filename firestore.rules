@@ -1,62 +1,51 @@
-﻿rules_version = '2';
-service cloud.firestore {
+﻿service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Helper functions
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-    
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
-    }
-    
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-    }
-    
-    function isTeacher() {
-      return isAuthenticated() && getUserData().role == 'teacher';
+
+    // General guard – in all sub‑rules the user must be logged in
+    match /{document=**} {
+      allow read, write: if false;
     }
 
-    // User profiles
-    match /users/{userId} {
-      allow read: if isAuthenticated();
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId) && 
-        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']) || isTeacher());
+    // ---------- 1️⃣  Chat Requests (user can send, receiver can accept/reject) ---------
+    match /chatRequests/{reqId} {
+      // Sender creates a new request (must be the sender)
+      allow create: if request.auth != null &&
+                   request.auth.uid == request.resource.data.sender &&
+                   request.resource.data.status == 'pending';
+
+      // Receiver may update status to 'accepted' or 'rejected'
+      allow update: if request.auth != null &&
+                   request.auth.uid == resource.data.receiver &&
+                   request.resource.data.status in ['accepted','rejected'] &&
+                   // keep other fields unchanged
+                   request.resource.data.sender == resource.data.sender &&
+                   request.resource.data.receiver == resource.data.receiver;
+
+      // The receiver can read their pending requests
+      allow read: if request.auth != null &&
+                  request.auth.uid == resource.data.receiver;
+
+      // Neither party may delete the request (audit trail)
       allow delete: if false;
     }
 
-    // Attendance sessions
-    match /attendanceSessions/{sessionId} {
-      allow read: if isAuthenticated();
-      allow create: if isTeacher();
-      allow update: if isTeacher();
-      allow delete: if isTeacher();
+    // ---------- 2️⃣  Conversations (one‑to‑one chat) ---------
+    match /conversations/{convId} {
+      // Only participants may read or write this conversation
+      allow read, write: if request.auth != null &&
+                          request.auth.uid in get(/databases/$(database)/documents/conversations/$(convId)).data.participants;
 
-      // Check-ins subcollection
-      match /checkins/{studentId} {
-        allow read: if isAuthenticated();
-        // Students can only check in for themselves
-        allow create: if isOwner(studentId);
-        // Only teachers can modify or delete check-in records
-        allow update, delete: if isTeacher();
+      // Creation is handled client‑side through addDoc creation of conversations/documents
+      // Prevent exploit by wild‑creating docs
+      allow create: if false;
+      allow update, delete: if false;
+
+      // ---------- 3️⃣  Messages sub‑collection ----------
+      match /messages/{msgId} {
+        // Only participants can read or write messages
+        allow read, write: if request.auth != null &&
+                            request.auth.uid in get(/databases/$(database)/documents/conversations/$(convId)).data.participants;
       }
-    }
-
-    // Typing indicators
-    match /typing/{userId} {
-      allow read: if isAuthenticated();
-      allow write: if isOwner(userId);
-    }
-
-    // Chat messages
-    match /messages/{messageId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && request.resource.data.uid == request.auth.uid;
-      allow update: if isAuthenticated() && resource.data.uid == request.auth.uid;
-      allow delete: if isTeacher() || (isAuthenticated() && resource.data.uid == request.auth.uid);
     }
   }
 }

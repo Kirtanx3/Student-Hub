@@ -1,0 +1,15 @@
+service storage {
+  match /b/{bucket}/o {
+    // Files inside chatFiles/* are only readable by the participants of the conversation.
+    // The path is: chatFiles/{conversationId}/{fileName}
+    match /chatFiles/{convId}/{fileName} {
+      // Only signed‑in users that are part of the conversation can see the file
+      allow read: if request.auth != null &&
+                  request.auth.uid in get(/databases/$(database)/documents/conversations/$(convId)).data.participants;
+
+      // Any signed‑in user can upload – the client must ensure that only the
+      // conversation participants write to the right folder
+      allow write: if request.auth != null;
+    }
+  }
+}
