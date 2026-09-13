@@ -1784,6 +1784,122 @@ $('signupPassword')?.addEventListener('input', function() {
   bar.style.background = colors[Math.min(Math.floor(score / 1.5), 4)] || 'var(--border)';
 });
 
+// ===== FRIEND REQUEST SYSTEM =====
+async function getUidByUsername(username) {
+  const q = query(collection(db, 'users'), where('username', '==', username.toLowerCase()), limit(1));
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+  return snap.docs[0].id;
+}
+
+async function sendFriendRequest(targetUsername) {
+  const me = auth.currentUser.uid;
+  const targetUid = await getUidByUsername(targetUsername);
+  if (!targetUid) { showToast('❌ User not found', 'error'); return; }
+  if (targetUid === me) { showToast('❌ You cannot add yourself', 'error'); return; }
+
+  const existing = await getDocs(query(
+    collection(db, 'friendRequests'),
+    where('fromUid', '==', me),
+    where('toUid', '==', targetUid),
+    where('status', '==', 'pending')
+  ));
+  if (!existing.empty) { showToast('⏳ Request already sent', 'info'); return; }
+
+  await addDoc(collection(db, 'friendRequests'), {
+    fromUid: me,
+    toUid: targetUid,
+    status: 'pending',
+    createdAt: serverTimestamp()
+  });
+  showToast('🚀 Friend request sent!', 'success');
+}
+
+let incomingReqUnsub = null;
+function watchIncomingRequests() {
+  const me = auth.currentUser.uid;
+  if (incomingReqUnsub) incomingReqUnsub();
+  incomingReqUnsub = onSnapshot(
+    query(collection(db, 'friendRequests'), where('toUid', '==', me), where('status', '==', 'pending')),
+    snap => {
+      const container = document.getElementById('incomingRequestsList');
+      container.innerHTML = '';
+      snap.forEach(doc => {
+        const d = doc.data();
+        const card = document.createElement('div');
+        card.className = 'request-card';
+        card.innerHTML = `
+          <strong>${escapeHtml(d.fromUid)}</strong> wants to be friends
+          <button class="btn btn-sm btn-primary accept" data-id="${doc.id}">Accept</button>
+          <button class="btn btn-sm btn-danger decline" data-id="${doc.id}">Decline</button>
+        `;
+        container.appendChild(card);
+      });
+      container.querySelectorAll('.accept').forEach(b => b.onclick = () => respondRequest(b.dataset.id, true));
+      container.querySelectorAll('.decline').forEach(b => b.onclick = () => respondRequest(b.dataset.id, false));
+    });
+}
+
+async function respondRequest(reqId, accept) {
+  const me = auth.currentUser.uid;
+  const ref = doc(db, 'friendRequests', reqId);
+  const newStatus = accept ? 'accepted' : 'declined';
+  await updateDoc(ref, { status: newStatus });
+
+  if (accept) {
+    const reqSnap = await getDoc(ref);
+    const { fromUid, toUid } = reqSnap.data();
+    const participants = [fromUid, toUid].sort();
+    const fsRef = doc(collection(db, 'friendships'), participants.join('_'));
+    await setDoc(fsRef, { participants, createdAt: serverTimestamp() });
+
+    const chatRef = doc(collection(db, 'conversations'), participants.join('_'));
+    await setDoc(chatRef, {
+      participants,
+      lastMessage: '',
+      updatedAt: serverTimestamp()
+    });
+    showToast('✅ Friend added – you can now chat!', 'success');
+  } else {
+    showToast('❌ Request declined', 'info');
+  }
+}
+
+let friendsUnsub = null;
+function watchMyFriends() {
+  const me = auth.currentUser.uid;
+  if (friendsUnsub) friendsUnsub();
+  friendsUnsub = onSnapshot(
+    query(collection(db, 'friendships'), where('participants', 'array-contains', me)),
+    snap => {
+      const list = document.getElementById('friendsList');
+      list.innerHTML = '';
+      snap.forEach(doc => {
+        const buddyUid = doc.data().participants.find(u => u !== me);
+        getDoc(doc(db, 'users', buddyUid)).then(uSnap => {
+          const u = uSnap.data();
+          const item = document.createElement('div');
+          item.className = 'friend-item';
+          item.innerHTML = `
+            <img src="${u.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.displayName)}`}" class="avatar-sm">
+            <span>${escapeHtml(u.displayName)}</span>
+            <button class="btn btn-sm btn-primary chat-btn" data-chat="${[me, buddyUid].sort().join('_')}">Chat</button>
+          `;
+          list.appendChild(item);
+        });
+      });
+      list.querySelectorAll('.chat-btn').forEach(b => {
+        b.onclick = () => openPrivateChat(b.dataset.chat);
+      });
+    });
+}
+
+function openPrivateChat(chatId) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-chat').classList.add('active');
+  loadChat(chatId);
+}
+
 console.log('🎓 Student Hub loaded successfully!');
 console.log('🔒 Secure QR Attendance System active.');
 console.log('📍 Location service: improved with GPS → network fallback.');
