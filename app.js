@@ -92,7 +92,16 @@ document.addEventListener('mouseleave', () => {
   glowBlob.classList.remove('active');
 });
 
-// ===== DOM REFS =====
+
+// Pause glow animations when tab is hidden to save CPU/battery
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    document.getElementById('glowContainer').classList.add('paused');
+  } else {
+    document.getElementById('glowContainer').classList.remove('paused');
+  }
+});
+\n// ===== DOM REFS =====
 const $ = id => document.getElementById(id);
 const loadingScreen = $('loadingScreen');
 const loginPage = $('loginPage');
