@@ -8,20 +8,19 @@
 
     // ---------- 1️⃣  Chat Requests (user can send, receiver can accept/reject) ---------
     match /chatRequests/{reqId} {
-      // Sender creates a new request (must be the sender)
+      // Sender creates a request
       allow create: if request.auth != null &&
                    request.auth.uid == request.resource.data.sender &&
                    request.resource.data.status == 'pending';
 
-      // Receiver may update status to 'accepted' or 'rejected'
+      // Receiver may accept or reject
       allow update: if request.auth != null &&
                    request.auth.uid == resource.data.receiver &&
                    request.resource.data.status in ['accepted','rejected'] &&
-                   // keep other fields unchanged
                    request.resource.data.sender == resource.data.sender &&
                    request.resource.data.receiver == resource.data.receiver;
 
-      // The receiver can read their pending requests
+      // Receiver can read their pending requests
       allow read: if request.auth != null &&
                   request.auth.uid == resource.data.receiver;
 
@@ -29,7 +28,41 @@
       allow delete: if false;
     }
 
-    // ---------- 2️⃣  Conversations (one‑to‑one chat) ---------
+    // ---------- 2️⃣  Friend Requests (student‑to‑student) ----------
+    match /friendRequests/{reqId} {
+      // Sender creates a friend request
+      allow create: if request.auth != null &&
+                   request.auth.uid == request.resource.data.fromUid &&
+                   request.resource.data.status == 'pending' &&
+                   request.auth.uid != request.resource.data.toUid;
+
+      // Receiver can accept or decline
+      allow update: if request.auth != null &&
+                   request.auth.uid == resource.data.toUid &&
+                   request.resource.data.status in ['accepted','declined'] &&
+                   request.resource.data.fromUid == resource.data.fromUid &&
+                   request.resource.data.toUid == resource.data.toUid;
+
+      // Only the two parties can read the request
+      allow read: if request.auth != null &&
+                  (request.auth.uid == resource.data.fromUid ||
+                   request.auth.uid == resource.data.toUid);
+
+      // No delete
+      allow delete: if false;
+    }
+
+    // ---------- 3️⃣  Friendships (mutual friends) ----------
+    match /friendships/{fsId} {
+      // Only the two friends can read/write
+      allow read, write: if request.auth != null &&
+                          request.auth.uid in resource.data.participants;
+
+      // Creation is done by client after a request is accepted
+      allow create: if false;
+    }
+
+    // ---------- 4️⃣  Conversations (one‑to‑one chat) ----------
     match /conversations/{convId} {
       // Only participants may read or write this conversation
       allow read, write: if request.auth != null &&
@@ -40,7 +73,7 @@
       allow create: if false;
       allow update, delete: if false;
 
-      // ---------- 3️⃣  Messages sub‑collection ----------
+      // ---------- 5️⃣  Messages sub‑collection ----------
       match /messages/{msgId} {
         // Only participants can read or write messages
         allow read, write: if request.auth != null &&
