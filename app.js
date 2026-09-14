@@ -101,7 +101,8 @@ document.addEventListener('visibilitychange', () => {
     document.getElementById('glowContainer').classList.remove('paused');
   }
 });
-\n// ===== DOM REFS =====
+
+// ===== DOM REFS =====
 const $ = id => document.getElementById(id);
 const loadingScreen = $('loadingScreen');
 const loginPage = $('loginPage');
@@ -1897,7 +1898,9 @@ function watchMyFriends() {
 function openPrivateChat(chatId) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById('view-chat').classList.add('active');
-  loadChat(chatId);
+  if (typeof loadChat === 'function') {
+    loadChat(chatId);
+  }
 }
 
 

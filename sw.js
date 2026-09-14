@@ -1,5 +1,5 @@
 // Service Worker for Student Hub
-const CACHE_NAME = 'student-hub-v1';
+const CACHE_NAME = 'student-hub-v3';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -7,52 +7,61 @@ const urlsToCache = [
   '/app.js',
   '/manifest.json',
   '/avatar.webp',
-  // Add any other static assets here
 ];
 
-// Install service worker and cache assets
+// Install: pre-cache and activate immediately
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        console.log('Opened cache');
-        return cache.addAll(urlsToCache);
-      })
-  );
-});
-
-// Activate service worker and clean up old caches
-self.addEventListener('activate', (event) => {
-  const cacheWhitelist = [CACHE_NAME];
-  event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheWhitelist.indexOf(cacheName) === -1) {
-            return caches.delete(cacheName);
-          }
-        })
-      );
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(urlsToCache);
     })
   );
 });
 
-// Fetch event: serve from cache if available, else from network
+// Activate: purge all old caches and claim clients immediately
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) => {
+      return Promise.all(
+        keys.map((key) => {
+          if (key !== CACHE_NAME) {
+            return caches.delete(key);
+          }
+        })
+      );
+    }).then(() => self.clients.claim())
+  );
+});
+
+// Fetch: Network-first for code/HTML so updates are instantaneous, cache fallback if offline
 self.addEventListener('fetch', (event) => {
+  if (event.request.method !== 'GET') return;
+
+  const url = new URL(event.request.url);
+
+  // For app assets & HTML: Network-first
   event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        // Return cached response if found
-        if (response) {
-          return response;
+    fetch(event.request)
+      .then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
         }
-        // Otherwise, fetch from network
-        return fetch(event.request);
+        return networkResponse;
+      })
+      .catch(() => {
+        // Fall back to cache if offline
+        return caches.match(event.request).then((cachedResponse) => {
+          if (cachedResponse) return cachedResponse;
+          if (event.request.mode === 'navigate') return caches.match('/index.html');
+        });
       })
   );
 });
 
-// Optional: Handle messages from the client (e.g., to skip waiting)
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
