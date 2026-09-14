@@ -1900,6 +1900,21 @@ function openPrivateChat(chatId) {
   loadChat(chatId);
 }
 
+
+// ===== FRIEND REQUEST UI =====
+document.getElementById('addFriendBtn')?.addEventListener('click', () => {
+  const username = document.getElementById('addFriendInput').value.trim();
+  if (!username) return;
+  sendFriendRequest(username);
+  document.getElementById('addFriendInput').value = '';
+});
+document.getElementById('openFriendRequests')?.addEventListener('click', () => {
+  document.getElementById('friendRequestsModal').style.display = 'flex';
+  watchIncomingRequests();
+});
+document.getElementById('closeFriendReqModal')?.addEventListener('click', () => {
+  document.getElementById('friendRequestsModal').style.display = 'none';
+});
 console.log('🎓 Student Hub loaded successfully!');
 console.log('🔒 Secure QR Attendance System active.');
 console.log('📍 Location service: improved with GPS → network fallback.');
