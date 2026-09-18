@@ -192,8 +192,8 @@
                 <button class="nav-item" data-view="profile"><span class="icon">👤</span><span class="label">Profile</span></button>
                 <button class="nav-item" data-view="courses"><span class="icon">📚</span><span class="label">Courses</span></button>
                 <button class="nav-item" data-view="grades"><span class="icon">📈</span><span class="label">Grades</span></button>
-                <button class="nav-item" data-view="messages"><span class="icon">💬</span><span class="label">Messages</span></button>
-                <button class="nav-item" data-view="chat"><span class="icon">🗨️</span><span class="label">Chat</span></button>
+                <button class="nav-item" data-view="messages"><span class="icon">💬</span><span class="label">Messages</span><span class="nav-badge" id="messagesNavBadge" style="display:none;">0</span></button>
+                <button class="nav-item" data-view="chat"><span class="icon">👥</span><span class="label">Group</span></button>
                 <button class="nav-item" data-view="friends"><span class="icon">👥</span><span class="label">Friends</span></button>
                 <!-- Student-only: Check In -->
                 <button class="nav-item student-only" data-view="checkin" style="display:none;"><span class="icon">📷</span><span class="label">Check In</span></button>
@@ -381,34 +381,72 @@
         </div>
       </div>
 
-      <!-- VIEW: Messages -->
+      <!-- VIEW: Messages (P2P Private Direct Messages) -->
       <div id="view-messages" class="view">
-        <h2 style="margin-bottom:20px;">💬 Messages</h2>
-        <div class="card">
-          <div class="activity-item">
-            <span class="icon">👨‍🏫</span>
-            <div class="info"><p><strong>Professor Smith:</strong> Great work on the assignment!</p><span>2h ago</span></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:12px;">
+          <div>
+            <h2 style="margin:0;display:flex;align-items:center;gap:8px;">💬 Private Messages</h2>
+            <p style="color:var(--text-muted);font-size:13px;margin:4px 0 0 0;">Chat privately 1-on-1 with your friends and classmates</p>
           </div>
-          <div class="activity-item">
-            <span class="icon">👩‍🏫</span>
-            <div class="info"><p><strong>Dr. Johnson:</strong> Don't forget the deadline tomorrow</p><span>1d ago</span></div>
+          <button class="btn btn-sm btn-primary" id="pmFindFriendsBtn" type="button">👥 View Friends</button>
+        </div>
+
+        <div class="pm-layout">
+          <!-- Conversations Sidebar -->
+          <div class="pm-conversations-sidebar" id="pmSidebar">
+            <div class="pm-sidebar-header">
+              <div class="pm-search-box">
+                <span>🔍</span>
+                <input type="text" id="pmSearchInput" placeholder="Filter conversations..." autocomplete="off">
+              </div>
+            </div>
+            
+            <div class="pm-conversations-list" id="pmConversationsList">
+              <div class="pm-loading">Loading conversations...</div>
+            </div>
           </div>
-          <div class="activity-item">
-            <span class="icon">📢</span>
-            <div class="info"><p><strong>Admin:</strong> New course materials available</p><span>3d ago</span></div>
+
+          <!-- Active Chat Area -->
+          <div class="pm-chat-area" id="pmChatArea">
+            <!-- Header -->
+            <div class="pm-chat-header" id="pmChatHeader" style="display:none;">
+              <button class="pm-back-mobile" id="pmBackMobileBtn" title="Back to conversations" type="button">←</button>
+              <div class="pm-chat-user-info">
+                <img id="pmActiveAvatar" src="" class="pm-active-avatar" alt="Avatar">
+                <div>
+                  <h4 id="pmActiveName" class="pm-active-name">Friend</h4>
+                  <span id="pmActiveUsername" class="pm-active-username">@username</span>
+                </div>
+              </div>
+              <div class="pm-header-status">
+                <span class="badge-status"><span class="dot"></span>Online</span>
+              </div>
+            </div>
+
+            <!-- Messages Stream -->
+            <div class="pm-messages-stream" id="pmMessagesStream">
+              <div class="pm-empty-placeholder">
+                <span style="font-size:48px;display:block;margin-bottom:12px;">💬</span>
+                <h3>Direct Messages</h3>
+                <p>Select a friend from the left to start chatting privately, or message someone from your Friends tab.</p>
+              </div>
+            </div>
+
+            <!-- Input Bar -->
+            <div class="pm-input-bar" id="pmInputBar" style="display:none;">
+              <input type="text" id="pmMessageInput" placeholder="Type a private message..." maxlength="800" autocomplete="off">
+              <button id="pmSendBtn" class="btn btn-primary" type="button">Send</button>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- VIEW: Chat -->
+      <!-- VIEW: Chat (Group Chat Only) -->
       <div id="view-chat" class="view">
-        <h2 style="margin-bottom:20px;">🗨️ Live Chat</h2>
+        <h2 style="margin-bottom:20px;">👥 Campus Group Chat</h2>
         <div class="chat-container">
           <div class="chat-header">
-            <div style="display:flex;align-items:center;gap:10px;">
-              <button class="btn btn-sm" id="chatBackBtn" style="display:none;padding:3px 8px;font-size:12px;background:var(--surface-hover);border:1px solid var(--border);" type="button">← General</button>
-              <span id="chatTitle">💬 General</span>
-            </div>
+            <span>👥 General Campus Chat</span>
             <span class="online" id="onlineCount">🟢 0 online</span>
           </div>
           <div class="chat-messages" id="chatMessages">
@@ -416,7 +454,7 @@
           </div>
           <div class="typing-indicator" id="typingIndicator">✍️ <span id="typingName">Someone</span> is typing<span class="dots"></span></div>
           <div class="chat-input">
-            <input type="text" id="chatInput" placeholder="Type a message..." maxlength="500">
+            <input type="text" id="chatInput" placeholder="Type a message to everyone..." maxlength="500">
             <button id="sendBtn">Send</button>
           </div>
         </div>

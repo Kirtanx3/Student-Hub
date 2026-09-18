@@ -27,7 +27,9 @@ import {
   serverTimestamp,
   deleteDoc,
   where,
-  limit
+  limit,
+  arrayUnion,
+  arrayRemove
 } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
 import {
   getStorage,
@@ -282,6 +284,7 @@ function getDepartmentLabel(deptKey) {
 // ===== AUTH STATE =====
 let currentUser = null;
 let chatUnsubscribe = null, typingUnsubscribe = null, presenceUnsubscribe = null;
+let pmConversationsUnsub = null, pmMessagesStreamUnsub = null, pmFriendsUnsub = null;
 let studentsUnsubscribe = null;
 let userRole = 'student';
 let userDepartment = 'computer-science';
@@ -529,6 +532,7 @@ async function loadDashboard(user) {
   }
   watchIncomingRequests();
   initLostAndFound();
+  initPrivateMessaging();
   
   setInterval(() => {
     document.querySelector('.welcome-text').textContent = getGreeting() + ' 👋';
@@ -1087,106 +1091,61 @@ $('chatInput')?.addEventListener('blur', () => {
   setTyping(false);
 });
 
-// ===== CHAT =====
-let currentChatId = null; // null = General chat, string = P2P conversation ID
-let currentChatFriendName = '';
-
-function renderChatMessageList(snap, container) {
-  if (snap.empty) {
-    const isP2P = !!currentChatId;
-    container.innerHTML = isP2P 
-      ? `<div class="empty">💬 No private messages yet. Say hello to ${escapeHtml(currentChatFriendName || 'your friend')}!</div>`
-      : '<div class="empty">💬 No messages yet. Say hello!</div>';
-    return;
-  }
-
-  let html = '';
-  snap.forEach(doc => {
-    const d = doc.data();
-    const isSelf = d.senderId === auth.currentUser?.uid;
-    const initial = (d.senderName || '?').charAt(0).toUpperCase();
-    const time = d.timestamp?.toDate?.() || new Date();
-    const timeStr = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const colors = ['#4f46e5','#7c3aed','#ec4899','#f59e0b','#10b981','#3b82f6'];
-    const color = colors[(d.senderName || '').length % colors.length];
-
-    html += `
-      <div class="chat-msg ${isSelf ? 'self' : ''}">
-        <div class="avatar" style="background:${color}">${escapeHtml(initial)}</div>
-        <div class="bubble">
-          <div class="name">${escapeHtml(d.senderName || 'Anonymous')}</div>
-          <div class="text">${escapeHtml(d.text || '')}</div>
-          <span class="time">${timeStr}</span>
-        </div>
-      </div>
-    `;
-  });
-
-  container.innerHTML = html;
-  container.scrollTop = container.scrollHeight;
-}
-
-function setupChatListener(chatId = null, friendTitle = '') {
+// ===== GROUP CHAT (view-chat) =====
+function setupChatListener() {
   if (chatUnsubscribe) {
     chatUnsubscribe();
     chatUnsubscribe = null;
   }
 
-  currentChatId = chatId;
-  currentChatFriendName = friendTitle;
-
-  const chatTitle = $('chatTitle');
-  const chatBackBtn = $('chatBackBtn');
   const container = $('chatMessages');
+  if (container) container.innerHTML = '<div class="empty">Loading group chat...</div>';
 
-  if (chatId) {
-    // P2P Private Chat mode
-    if (chatTitle) chatTitle.textContent = `💬 ${friendTitle || 'Private Chat'}`;
-    if (chatBackBtn) chatBackBtn.style.display = 'inline-block';
-    if (container) container.innerHTML = `<div class="empty">Loading private messages...</div>`;
+  const q = query(
+    collection(db, 'messages'),
+    orderBy('timestamp', 'asc'),
+    limit(200)
+  );
 
-    const q = query(
-      collection(db, 'conversations', chatId, 'messages'),
-      orderBy('timestamp', 'asc'),
-      limit(200)
-    );
-
-    chatUnsubscribe = onSnapshot(
-      q,
-      snap => {
-        if (!container) return;
-        renderChatMessageList(snap, container);
-      },
-      err => {
-        console.error('Private chat error:', err);
-        if (container) container.innerHTML = '<div class="empty" style="color:#dc2626;">⚠️ Error loading private chat. Please ensure rules are published.</div>';
+  chatUnsubscribe = onSnapshot(
+    q,
+    snap => {
+      if (!container) return;
+      if (snap.empty) {
+        container.innerHTML = '<div class="empty">💬 No group messages yet. Say hello to everyone!</div>';
+        return;
       }
-    );
 
-  } else {
-    // Global General Chat mode
-    if (chatTitle) chatTitle.textContent = '💬 General';
-    if (chatBackBtn) chatBackBtn.style.display = 'none';
-    if (container) container.innerHTML = '<div class="empty">Loading chat...</div>';
+      let html = '';
+      snap.forEach(doc => {
+        const d = doc.data();
+        const isSelf = d.senderId === auth.currentUser?.uid;
+        const initial = (d.senderName || '?').charAt(0).toUpperCase();
+        const time = d.timestamp?.toDate?.() || new Date();
+        const timeStr = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const colors = ['#4f46e5','#7c3aed','#ec4899','#f59e0b','#10b981','#3b82f6'];
+        const color = colors[(d.senderName || '').length % colors.length];
 
-    const q = query(
-      collection(db, 'messages'),
-      orderBy('timestamp', 'asc'),
-      limit(200)
-    );
+        html += `
+          <div class="chat-msg ${isSelf ? 'self' : ''}">
+            <div class="avatar" style="background:${color}">${escapeHtml(initial)}</div>
+            <div class="bubble">
+              <div class="name">${escapeHtml(d.senderName || 'Anonymous')}</div>
+              <div class="text">${escapeHtml(d.text || '')}</div>
+              <span class="time">${timeStr}</span>
+            </div>
+          </div>
+        `;
+      });
 
-    chatUnsubscribe = onSnapshot(
-      q,
-      snap => {
-        if (!container) return;
-        renderChatMessageList(snap, container);
-      },
-      err => {
-        console.error('General chat error:', err);
-        if (container) container.innerHTML = '<div class="empty" style="color:#dc2626;">⚠️ Error loading chat. Please update Firestore rules.</div>';
-      }
-    );
-  }
+      container.innerHTML = html;
+      container.scrollTop = container.scrollHeight;
+    },
+    err => {
+      console.error('Group chat error:', err);
+      if (container) container.innerHTML = '<div class="empty" style="color:#dc2626;">⚠️ Error loading group chat. Please ensure Firestore rules are published.</div>';
+    }
+  );
 }
 
 async function sendMessage() {
@@ -1206,45 +1165,17 @@ async function sendMessage() {
     const rawName = snap.exists() && snap.data().name ? snap.data().name : auth.currentUser.email.split('@')[0];
     const name = getFirstName(rawName);
 
-    if (currentChatId) {
-      // Send to P2P conversation subcollection
-      await addDoc(collection(db, 'conversations', currentChatId, 'messages'), {
-        text,
-        senderId: auth.currentUser.uid,
-        senderName: name,
-        timestamp: serverTimestamp()
-      });
-
-      // Update parent conversation document
-      try {
-        await updateDoc(doc(db, 'conversations', currentChatId), {
-          lastMessage: text,
-          lastSenderId: auth.currentUser.uid,
-          updatedAt: serverTimestamp()
-        });
-      } catch (cErr) {
-        await setDoc(doc(db, 'conversations', currentChatId), {
-          participants: currentChatId.split('_'),
-          lastMessage: text,
-          lastSenderId: auth.currentUser.uid,
-          updatedAt: serverTimestamp()
-        }, { merge: true });
-      }
-
-    } else {
-      // Send to Global general messages
-      await addDoc(collection(db, 'messages'), {
-        text,
-        senderId: auth.currentUser.uid,
-        senderName: name,
-        timestamp: serverTimestamp()
-      });
-    }
+    await addDoc(collection(db, 'messages'), {
+      text,
+      senderId: auth.currentUser.uid,
+      senderName: name,
+      timestamp: serverTimestamp()
+    });
 
     input.value = '';
     input.focus();
   } catch(e) {
-    console.error('Send error:', e);
+    console.error('Group chat send error:', e);
     showToast('Failed to send message: ' + (e.message || 'Check connection/rules'), 'error');
   }
 
@@ -1255,9 +1186,6 @@ async function sendMessage() {
 $('sendBtn')?.addEventListener('click', sendMessage);
 $('chatInput')?.addEventListener('keydown', e => {
   if (e.key === 'Enter') sendMessage();
-});
-$('chatBackBtn')?.addEventListener('click', () => {
-  setupChatListener(null);
 });
 
 // ===== REMEMBER ME =====
@@ -1285,6 +1213,11 @@ document.querySelectorAll('.nav-item:not(.logout-btn)').forEach(item => {
     const target = document.getElementById(`view-${view}`);
     if (target) {
       target.classList.add('active');
+      if (view === 'messages') {
+        if (typeof renderPmConversationsList === 'function') {
+          renderPmConversationsList();
+        }
+      }
       if (view === 'chat') {
         setTimeout(() => {
           const container = $('chatMessages');
@@ -1856,6 +1789,9 @@ $('confirmLogoutBtn')?.addEventListener('click', async function() {
   if (checkinUnsub) { checkinUnsub(); checkinUnsub = null; }
   if (studentSessionsUnsub) { studentSessionsUnsub(); studentSessionsUnsub = null; }
   if (lostFoundUnsub) { lostFoundUnsub(); lostFoundUnsub = null; }
+  if (pmConversationsUnsub) { pmConversationsUnsub(); pmConversationsUnsub = null; }
+  if (pmMessagesStreamUnsub) { pmMessagesStreamUnsub(); pmMessagesStreamUnsub = null; }
+  if (pmFriendsUnsub) { pmFriendsUnsub(); pmFriendsUnsub = null; }
   
   // End any active session owned by this teacher
   if (activeSessionId) {
@@ -2403,17 +2339,546 @@ function watchMyFriends() {
   );
 }
 
-function openPrivateChat(chatId, friendName = '', friendUsername = '') {
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.querySelector('.nav-item[data-view="chat"]')?.classList.add('active');
-  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.getElementById('view-chat')?.classList.add('active');
+// ==================================================================
+// PRIVATE MESSAGING CONTROLLER (view-messages)
+// ==================================================================
+let activePmChat = null; // { chatId, friendUid, displayName, username, photoURL }
+let pmConversationsMap = new Map(); // chatId -> conversation data
+let pmFriendsCache = []; // friends list [{ uid, displayName, username, photoURL, chatId }]
+let pmProfilesCache = new Map(); // uid -> { displayName, username, photoURL }
+let pmSearchFilter = '';
 
-  const title = friendName ? `${friendName} ${friendUsername ? '(' + friendUsername + ')' : ''}` : 'Private Chat';
-  setupChatListener(chatId, title);
+function formatPmTime(timestamp) {
+  if (!timestamp) return '';
+  try {
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffSec = Math.floor(diffMs / 1000);
+    if (diffSec < 60) return 'Just now';
+    if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m`;
+    
+    // If today
+    if (date.toDateString() === now.toDateString()) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return date.toLocaleDateString([], { weekday: 'short' });
+    return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  } catch (e) {
+    return '';
+  }
+}
+
+async function getOrFetchUserProfile(uid) {
+  if (!uid) return { displayName: 'User', username: '@user', photoURL: '' };
+  if (pmProfilesCache.has(uid)) return pmProfilesCache.get(uid);
+
+  try {
+    const uSnap = await getDoc(doc(db, 'users', uid));
+    if (uSnap.exists()) {
+      const u = uSnap.data();
+      const displayName = u.name || u.displayName || (u.email ? u.email.split('@')[0] : 'User');
+      const rawUsername = u.username || (u.email ? u.email.split('@')[0] : '');
+      const username = rawUsername ? (rawUsername.startsWith('@') ? rawUsername : `@${rawUsername}`) : '';
+      const photoURL = u.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=4f46e5&color=fff`;
+      const prof = { displayName, username, photoURL };
+      pmProfilesCache.set(uid, prof);
+      return prof;
+    }
+  } catch (e) {
+    console.warn('Error fetching profile for uid:', uid, e);
+  }
+
+  const fallback = { displayName: 'Student', username: '', photoURL: `https://ui-avatars.com/api/?name=Student&background=4f46e5&color=fff` };
+  pmProfilesCache.set(uid, fallback);
+  return fallback;
+}
+
+function updateMessagesNavBadge() {
+  if (!auth.currentUser) return;
+  const myUid = auth.currentUser.uid;
+  let totalUnread = 0;
+
+  pmConversationsMap.forEach(conv => {
+    if (Array.isArray(conv.unreadBy) && conv.unreadBy.includes(myUid)) {
+      totalUnread++;
+    }
+  });
+
+  const badge = document.getElementById('messagesNavBadge');
+  if (badge) {
+    if (totalUnread > 0) {
+      badge.textContent = totalUnread > 99 ? '99+' : String(totalUnread);
+      badge.style.display = 'inline-block';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+}
+
+async function renderPmConversationsList() {
+  const container = document.getElementById('pmConversationsList');
+  if (!container) return;
+  if (!auth.currentUser) {
+    container.innerHTML = '<div class="pm-loading">Please sign in to view messages.</div>';
+    return;
+  }
+
+  const myUid = auth.currentUser.uid;
+  const queryFilter = (pmSearchFilter || '').toLowerCase().trim();
+
+  // Combine conversation items
+  const items = [];
+  const processedUids = new Set();
+
+  // 1. Existing conversations
+  const convEntries = Array.from(pmConversationsMap.values());
+  // Sort descending by updatedAt
+  convEntries.sort((a, b) => {
+    const tA = a.updatedAt?.toMillis ? a.updatedAt.toMillis() : (a.updatedAt ? new Date(a.updatedAt).getTime() : 0);
+    const tB = b.updatedAt?.toMillis ? b.updatedAt.toMillis() : (b.updatedAt ? new Date(b.updatedAt).getTime() : 0);
+    return tB - tA;
+  });
+
+  for (const conv of convEntries) {
+    const otherUid = (conv.participants || []).find(u => u !== myUid);
+    if (!otherUid) continue;
+    processedUids.add(otherUid);
+
+    const profile = await getOrFetchUserProfile(otherUid);
+    const isUnread = Array.isArray(conv.unreadBy) && conv.unreadBy.includes(myUid);
+    const timeStr = formatPmTime(conv.updatedAt);
+    const isSelfSender = conv.lastSenderId === myUid;
+    const snippetPrefix = isSelfSender ? 'You: ' : '';
+    const snippet = conv.lastMessage ? `${snippetPrefix}${conv.lastMessage}` : 'Conversation started';
+
+    items.push({
+      chatId: conv.id || [myUid, otherUid].sort().join('_'),
+      otherUid,
+      displayName: profile.displayName,
+      username: profile.username,
+      photoURL: profile.photoURL,
+      timeStr,
+      snippet,
+      isUnread,
+      hasConversation: true
+    });
+  }
+
+  // 2. Friends who don't have an active conversation yet
+  for (const friend of pmFriendsCache) {
+    if (!processedUids.has(friend.uid)) {
+      processedUids.add(friend.uid);
+      items.push({
+        chatId: friend.chatId || [myUid, friend.uid].sort().join('_'),
+        otherUid: friend.uid,
+        displayName: friend.displayName,
+        username: friend.username,
+        photoURL: friend.photoURL,
+        timeStr: '',
+        snippet: 'Click to start chatting',
+        isUnread: false,
+        hasConversation: false
+      });
+    }
+  }
+
+  // Apply search filter
+  const filtered = items.filter(item => {
+    if (!queryFilter) return true;
+    return item.displayName.toLowerCase().includes(queryFilter) ||
+           item.username.toLowerCase().includes(queryFilter);
+  });
+
+  if (filtered.length === 0) {
+    if (queryFilter) {
+      container.innerHTML = `
+        <div class="pm-loading">
+          <span style="font-size:24px;display:block;margin-bottom:6px;">🔍</span>
+          No chats matching "<strong>${escapeHtml(queryFilter)}</strong>"
+        </div>
+      `;
+    } else {
+      container.innerHTML = `
+        <div class="pm-loading" style="padding:40px 16px;">
+          <span style="font-size:36px;display:block;margin-bottom:10px;">👥</span>
+          <h4 style="margin:0 0 6px;color:var(--text-primary);">No Friends Added Yet</h4>
+          <p style="margin:0 0 14px;font-size:12px;color:var(--text-muted);">Find classmates by their username on your dashboard to message them privately!</p>
+          <button class="btn btn-sm btn-primary" id="pmEmptyFindFriendsBtn" type="button">➕ Find Friends</button>
+        </div>
+      `;
+      document.getElementById('pmEmptyFindFriendsBtn')?.addEventListener('click', () => {
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        document.querySelector('.nav-item[data-view="dashboard"]')?.classList.add('active');
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        document.getElementById('view-dashboard')?.classList.add('active');
+        setTimeout(() => {
+          document.getElementById('addFriendInput')?.focus();
+        }, 120);
+      });
+    }
+    return;
+  }
+
+  let html = '';
+  filtered.forEach(item => {
+    const isActive = activePmChat && activePmChat.chatId === item.chatId;
+    const activeClass = isActive ? 'active' : '';
+    const unreadClass = item.isUnread ? 'has-unread' : '';
+
+    html += `
+      <div class="pm-conv-item ${activeClass} ${unreadClass}" data-chat-id="${item.chatId}" data-uid="${item.otherUid}">
+        <div class="pm-conv-avatar-wrap">
+          <img src="${escapeHtml(item.photoURL)}" class="pm-conv-avatar" alt="${escapeHtml(item.displayName)}" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(item.displayName)}&background=4f46e5&color=fff'">
+        </div>
+        <div class="pm-conv-details">
+          <div class="pm-conv-top">
+            <span class="pm-conv-name">${escapeHtml(item.displayName)}</span>
+            <span class="pm-conv-time">${item.timeStr}</span>
+          </div>
+          <div class="pm-conv-bottom">
+            <span class="pm-conv-snippet">${escapeHtml(item.snippet)}</span>
+            ${item.isUnread ? '<span class="pm-unread-dot" title="Unread messages"></span>' : ''}
+          </div>
+        </div>
+      </div>
+    `;
+  });
+
+  container.innerHTML = html;
+
+  // Attach click listener to each conversation card
+  container.querySelectorAll('.pm-conv-item').forEach(card => {
+    card.addEventListener('click', () => {
+      const chatId = card.dataset.chatId;
+      const uid = card.dataset.uid;
+      const targetItem = filtered.find(it => it.chatId === chatId);
+      if (targetItem) {
+        openPrivateConversation(uid, targetItem);
+      }
+    });
+  });
+}
+
+function watchFriendsForPm(myUid) {
+  if (pmFriendsUnsub) {
+    pmFriendsUnsub();
+    pmFriendsUnsub = null;
+  }
+
+  try {
+    const q = query(
+      collection(db, 'friendships'),
+      where('participants', 'array-contains', myUid)
+    );
+
+    pmFriendsUnsub = onSnapshot(q, async snap => {
+      const friends = [];
+      for (const d of snap.docs) {
+        const parts = d.data().participants || [];
+        const otherUid = parts.find(u => u !== myUid);
+        if (!otherUid) continue;
+
+        const prof = await getOrFetchUserProfile(otherUid);
+        friends.push({
+          uid: otherUid,
+          displayName: prof.displayName,
+          username: prof.username,
+          photoURL: prof.photoURL,
+          chatId: [myUid, otherUid].sort().join('_')
+        });
+      }
+      pmFriendsCache = friends;
+      renderPmConversationsList();
+    }, err => {
+      console.warn('PM friendships listener error:', err);
+    });
+  } catch (err) {
+    console.warn('Error setting up PM friends listener:', err);
+  }
+}
+
+function initPrivateMessaging() {
+  if (!auth.currentUser) return;
+  const myUid = auth.currentUser.uid;
+
+  if (pmConversationsUnsub) {
+    pmConversationsUnsub();
+    pmConversationsUnsub = null;
+  }
+
+  // Preload and watch friends
+  watchFriendsForPm(myUid);
+
+  // Watch user's conversations
+  try {
+    const q = query(
+      collection(db, 'conversations'),
+      where('participants', 'array-contains', myUid),
+      orderBy('updatedAt', 'desc')
+    );
+
+    pmConversationsUnsub = onSnapshot(q, snap => {
+      pmConversationsMap.clear();
+      snap.forEach(d => {
+        pmConversationsMap.set(d.id, { id: d.id, ...d.data() });
+      });
+      updateMessagesNavBadge();
+      renderPmConversationsList();
+    }, err => {
+      console.warn('Conversations composite query fallback:', err);
+      // Fallback without orderBy in case composite index is not created yet
+      const fallbackQ = query(
+        collection(db, 'conversations'),
+        where('participants', 'array-contains', myUid)
+      );
+      pmConversationsUnsub = onSnapshot(fallbackQ, fallbackSnap => {
+        pmConversationsMap.clear();
+        fallbackSnap.forEach(d => {
+          pmConversationsMap.set(d.id, { id: d.id, ...d.data() });
+        });
+        updateMessagesNavBadge();
+        renderPmConversationsList();
+      }, fErr => {
+        console.error('PM conversations listener error:', fErr);
+        const container = document.getElementById('pmConversationsList');
+        if (container) container.innerHTML = '<div class="pm-loading" style="color:#ef4444;">⚠️ Error loading conversations. Check Firestore rules.</div>';
+      });
+    });
+  } catch (err) {
+    console.error('Init PM error:', err);
+  }
+}
+
+async function openPrivateConversation(friendUid, friendData = {}) {
+  if (!auth.currentUser || !friendUid) return;
+  const myUid = auth.currentUser.uid;
+  const chatId = friendData.chatId || [myUid, friendUid].sort().join('_');
+
+  // Ensure we have user profile
+  let prof = await getOrFetchUserProfile(friendUid);
+  const displayName = friendData.displayName || prof.displayName || 'Friend';
+  const username = friendData.username || prof.username || '';
+  const photoURL = friendData.photoURL || prof.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=4f46e5&color=fff`;
+
+  activePmChat = {
+    chatId,
+    friendUid,
+    displayName,
+    username,
+    photoURL
+  };
+
+  // Switch to messages view
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelector('.nav-item[data-view="messages"]')?.classList.add('active');
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-messages')?.classList.add('active');
+
+  // Enable mobile view state
+  const pmLayout = document.querySelector('.pm-layout');
+  if (pmLayout) pmLayout.classList.add('chat-active-mobile');
+
+  // Update UI Elements
+  const header = document.getElementById('pmChatHeader');
+  const inputBar = document.getElementById('pmInputBar');
+  const avatarEl = document.getElementById('pmActiveAvatar');
+  const nameEl = document.getElementById('pmActiveName');
+  const usernameEl = document.getElementById('pmActiveUsername');
+
+  if (header) header.style.display = 'flex';
+  if (inputBar) inputBar.style.display = 'flex';
+  if (avatarEl) {
+    avatarEl.src = photoURL;
+    avatarEl.onerror = () => { avatarEl.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=4f46e5&color=fff`; };
+  }
+  if (nameEl) nameEl.textContent = displayName;
+  if (usernameEl) usernameEl.textContent = username;
+
+  // Highlight active conversation in list
+  document.querySelectorAll('.pm-conv-item').forEach(card => {
+    if (card.dataset.chatId === chatId) {
+      card.classList.add('active');
+      card.classList.remove('has-unread');
+      card.querySelector('.pm-unread-dot')?.remove();
+    } else {
+      card.classList.remove('active');
+    }
+  });
+
+  // Mark conversation as read in Firestore
+  try {
+    const convDocRef = doc(db, 'conversations', chatId);
+    await updateDoc(convDocRef, {
+      unreadBy: arrayRemove(myUid)
+    });
+    // Update local state and badge immediately
+    const localConv = pmConversationsMap.get(chatId);
+    if (localConv && Array.isArray(localConv.unreadBy)) {
+      localConv.unreadBy = localConv.unreadBy.filter(u => u !== myUid);
+    }
+    updateMessagesNavBadge();
+  } catch (err) {
+    // Ignore doc-not-found for newly started chats
+  }
+
+  // Subscribe to real-time messages in conversations/{chatId}/messages
+  if (pmMessagesStreamUnsub) {
+    pmMessagesStreamUnsub();
+    pmMessagesStreamUnsub = null;
+  }
+
+  const streamEl = document.getElementById('pmMessagesStream');
+  if (streamEl) streamEl.innerHTML = '<div class="pm-loading">Loading messages...</div>';
+
+  try {
+    const mq = query(
+      collection(db, 'conversations', chatId, 'messages'),
+      orderBy('timestamp', 'asc'),
+      limit(200)
+    );
+
+    pmMessagesStreamUnsub = onSnapshot(mq, snap => {
+      if (!streamEl) return;
+      if (snap.empty) {
+        streamEl.innerHTML = `
+          <div class="pm-empty-placeholder">
+            <span style="font-size:44px;display:block;margin-bottom:10px;">💬</span>
+            <h4 style="margin:0 0 6px 0;color:var(--text-primary);">Say hello to ${escapeHtml(displayName)}!</h4>
+            <p style="margin:0;font-size:13px;color:var(--text-muted);">Send a message below to start your private 1-on-1 chat.</p>
+          </div>
+        `;
+        return;
+      }
+
+      let html = '';
+      snap.forEach(docSnap => {
+        const d = docSnap.data();
+        const isSelf = d.senderId === myUid;
+        const time = d.timestamp?.toDate ? d.timestamp.toDate() : new Date();
+        const timeStr = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const avatarSrc = isSelf ? (currentUserProfileData?.photoURL || '') : photoURL;
+        const initial = (d.senderName || displayName).charAt(0).toUpperCase();
+
+        html += `
+          <div class="pm-msg ${isSelf ? 'self' : 'other'}">
+            ${!isSelf ? `
+              <img src="${escapeHtml(avatarSrc)}" class="pm-msg-avatar" alt="${escapeHtml(displayName)}" onerror="this.outerHTML='<div class=\\'pm-msg-avatar\\' style=\\'background:var(--primary);\\'>${escapeHtml(initial)}</div>'">
+            ` : ''}
+            <div class="pm-msg-bubble">
+              <div class="pm-msg-text">${escapeHtml(d.text || '')}</div>
+              <span class="pm-msg-time">${timeStr}</span>
+            </div>
+          </div>
+        `;
+      });
+
+      streamEl.innerHTML = html;
+      streamEl.scrollTop = streamEl.scrollHeight;
+    }, err => {
+      console.error('Private message stream error:', err);
+      if (streamEl) streamEl.innerHTML = '<div class="pm-loading" style="color:#ef4444;">⚠️ Error loading messages. Please verify Firestore rules are published.</div>';
+    });
+  } catch (err) {
+    console.error('PM Stream query setup error:', err);
+  }
+
+  // Focus message input
+  const input = document.getElementById('pmMessageInput');
+  if (input) {
+    input.focus();
+  }
+}
+
+async function sendPrivateMessage() {
+  if (!auth.currentUser || !activePmChat) return;
+  const input = document.getElementById('pmMessageInput');
+  if (!input) return;
+  const text = input.value.trim();
+  if (!text) return;
+
+  const myUid = auth.currentUser.uid;
+  const chatId = activePmChat.chatId;
+  const friendUid = activePmChat.friendUid;
+
+  // Clear input right away for responsive UX
+  input.value = '';
+  input.focus();
+
+  try {
+    const snap = await getDoc(doc(db, 'users', myUid));
+    const rawName = snap.exists() && snap.data().name ? snap.data().name : auth.currentUser.email.split('@')[0];
+    const myName = getFirstName(rawName);
+
+    // 1. Add message to subcollection
+    await addDoc(collection(db, 'conversations', chatId, 'messages'), {
+      text,
+      senderId: myUid,
+      senderName: myName,
+      timestamp: serverTimestamp()
+    });
+
+    // 2. Update conversation summary document (with unread flag for recipient)
+    await setDoc(doc(db, 'conversations', chatId), {
+      participants: [myUid, friendUid].sort(),
+      lastMessage: text,
+      lastSenderId: myUid,
+      updatedAt: serverTimestamp(),
+      unreadBy: [friendUid]
+    }, { merge: true });
+
+  } catch (err) {
+    console.error('Failed to send private message:', err);
+    showToast('Failed to send private message: ' + (err.message || 'Check Firestore rules'), 'error');
+  }
+}
+
+function openPrivateChat(chatId, friendName = '', friendUsername = '') {
+  if (!auth.currentUser || !chatId) return;
+  const myUid = auth.currentUser.uid;
+  const friendUid = chatId.split('_').find(u => u !== myUid);
+  if (!friendUid) return;
+
+  openPrivateConversation(friendUid, {
+    chatId,
+    displayName: friendName,
+    username: friendUsername
+  });
 }
 
 window.loadChat = (chatId, name) => openPrivateChat(chatId, name);
+
+// ===== PRIVATE MESSAGING EVENT LISTENERS =====
+document.getElementById('pmSendBtn')?.addEventListener('click', sendPrivateMessage);
+document.getElementById('pmMessageInput')?.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    sendPrivateMessage();
+  }
+});
+
+// Mobile back button
+document.getElementById('pmBackMobileBtn')?.addEventListener('click', () => {
+  document.querySelector('.pm-layout')?.classList.remove('chat-active-mobile');
+});
+
+// "View Friends" button in Messages header
+document.getElementById('pmFindFriendsBtn')?.addEventListener('click', () => {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelector('.nav-item[data-view="friends"]')?.classList.add('active');
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-friends')?.classList.add('active');
+  watchMyFriends();
+});
+
+// Conversation search filter
+document.getElementById('pmSearchInput')?.addEventListener('input', e => {
+  pmSearchFilter = e.target.value;
+  renderPmConversationsList();
+});
 
 // ===== EVENT LISTENERS: ADD FRIEND SEARCH & MODALS =====
 let searchDebounceTimer = null;
