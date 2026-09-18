@@ -222,11 +222,18 @@
         </div>
         <div class="topbar-right">
           <button class="theme-toggle" id="themeToggle3">🌙</button>
-          <button class="btn btn-sm" id="openFriendRequests" title="Friend Requests">💬</button>
+          <button class="btn btn-sm btn-icon-badge" id="openFriendRequests" title="Friend Requests">
+            💬 <span class="badge-count" id="friendRequestsCountBadge" style="display:none;">0</span>
+          </button>
+          <button class="btn btn-sm btn-icon-badge btn-lostfound-topbar" id="openLostFoundBtn" title="Campus Lost & Found">
+            🎒 <span class="lostfound-btn-text">Lost &amp; Found</span>
+            <span class="badge-count" id="lostFoundCountBadge" style="display:none;">0</span>
+          </button>
           <div class="user-badge">
             <img id="miniAvatar" src="" alt="Avatar">
             <div class="badge-info">
               <span class="badge-name" id="userName">User</span>
+              <span class="badge-username" id="topbarUsername">@...</span>
               <span class="badge-status"><span class="dot"></span>Online</span>
             </div>
           </div>
@@ -240,13 +247,41 @@
           <p id="dashboardSubtitle">Here's your academic overview</p>
         </div>
         <!-- Add Friend -->
-        <div class="card" style="margin-top:16px;">
-          <h3>➕ Add Friend</h3>
-          <div style="display:flex;gap:8px;margin-top:8px;">
-            <input type="text" id="addFriendInput" placeholder="username" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:8px;">
-            <button class="btn btn-primary" id="addFriendBtn">Send Request</button>
+        <div class="card add-friend-card" style="margin-top:16px;">
+          <div class="add-friend-header">
+            <div>
+              <h3 style="display:flex;align-items:center;gap:8px;margin:0;">➕ Add Friend</h3>
+              <p class="add-friend-sub">Search students by username to send friend requests</p>
+            </div>
+            <div class="my-username-pill" id="myUsernamePill" title="Your username for friends to add you">
+              <span class="pill-label">Your Username:</span>
+              <span class="pill-value" id="myUsernameDisplay">@...</span>
+              <button type="button" class="copy-username-btn" id="copyMyUsernameBtn" title="Copy username">📋</button>
+            </div>
           </div>
-          <p id="addFriendMsg" style="margin-top:8px;font-size:13px;color:var(--text-muted);"></p>
+
+          <div class="friend-search-container" id="friendSearchContainer">
+            <div class="friend-search-input-wrap">
+              <span class="search-prefix">@</span>
+              <input type="text" id="addFriendInput" placeholder="Type username (e.g. kirtan, john)..." autocomplete="off" spellcheck="false">
+              <button type="button" class="search-clear-btn" id="addFriendClearBtn" style="display:none;" title="Clear">✕</button>
+              <button class="btn btn-primary" id="addFriendBtn">
+                <span class="btn-search-icon">🔍</span>
+                <span class="btn-search-text">Search</span>
+              </button>
+            </div>
+
+            <!-- POPUP SEARCH RESULTS -->
+            <div class="friend-search-popup" id="addFriendResultsPopup" style="display:none;">
+              <div class="popup-header">
+                <span class="popup-title" id="popupResultsTitle">Search Results</span>
+                <button type="button" class="popup-close-btn" id="closeSearchPopupBtn" title="Close popup">✕</button>
+              </div>
+              <div class="popup-results-list" id="addFriendResultsList"></div>
+            </div>
+          </div>
+
+          <p id="addFriendMsg" style="margin-top:8px;font-size:13px;color:var(--text-muted);display:none;"></p>
         </div>
         <!-- End Add Friend -->
         <div class="stats-grid">
@@ -384,11 +419,17 @@
         </div>
       </div>
       
-            <!-- VIEW: Friends -->
-            <div id="view-friends" class="view">
-              <h2 style="margin-bottom:20px;">👥 My Friends</h2>
-              <div id="friendsList" class="card" style="padding:16px;"></div>
-            </div>
+      <!-- VIEW: Friends -->
+      <div id="view-friends" class="view">
+        <div class="friends-view-header">
+          <div>
+            <h2 style="margin:0;">👥 My Friends</h2>
+            <p style="color:var(--text-muted);font-size:14px;margin-top:4px;">Connect and chat with fellow students</p>
+          </div>
+          <button class="btn btn-primary btn-sm" id="jumpToAddFriendBtn">➕ Add Friend</button>
+        </div>
+        <div id="friendsList" class="card" style="padding:16px;margin-top:16px;"></div>
+      </div>
       
             <!-- VIEW: Check In (Student Only) -->
       <div id="view-checkin" class="view">
@@ -508,11 +549,149 @@
 </div>
 
 <!-- FRIEND REQUESTS MODAL -->
-<div id="friendRequestsModal" class="view" style="display:none;">
-  <div class="auth-card" style="max-width:420px;">
-    <h3>📬 Friend Requests</h3>
-    <div id="incomingRequestsList" style="margin-top:12px;"></div>
-    <button class="btn btn-sm" id="closeFriendReqModal" style="margin-top:16px;">Close</button>
+<div id="friendRequestsModal" class="custom-modal-overlay" style="display:none;">
+  <div class="auth-card friend-req-card" style="max-width:460px;width:92%;position:relative;">
+    <button class="close-modal" id="closeFriendReqModal" title="Close">✕</button>
+    <div class="logo-wrap" style="text-align:left;margin-bottom:12px;">
+      <h2 style="font-size:20px;display:flex;align-items:center;gap:8px;margin-bottom:4px;">📬 Friend Requests</h2>
+      <p style="color:var(--text-muted);font-size:13px;margin:0;">Manage pending connection requests from fellow students</p>
+    </div>
+    <div id="incomingRequestsList" class="incoming-requests-list" style="margin-top:14px;"></div>
+  </div>
+</div>
+
+<!-- CAMPUS LOST & FOUND MODAL -->
+<div id="lostFoundModal" class="custom-modal-overlay" style="display:none;">
+  <div class="auth-card lostfound-modal-card">
+    <button class="close-modal" id="closeLostFoundModal" title="Close">✕</button>
+
+    <!-- Modal Header -->
+    <div class="lostfound-header">
+      <div class="lostfound-title-wrap">
+        <h2>🎒 Campus Lost &amp; Found</h2>
+        <p>Report misplaced belongings or browse items found across classrooms, labs, and campus.</p>
+      </div>
+      <button class="btn btn-primary btn-sm" id="toggleReportFormBtn" type="button">
+        <span id="reportBtnIcon">➕</span> <span id="reportBtnText">Report Item</span>
+      </button>
+    </div>
+
+    <!-- Report Item Form (collapsible) -->
+    <div id="lostFoundReportPanel" class="lostfound-report-panel" style="display:none;">
+      <div class="report-panel-header">
+        <h3 id="reportFormTitle">📝 Report an Item</h3>
+        <span class="report-panel-sub">Fill out the details to help reunite items with owners</span>
+      </div>
+      <form id="lostFoundForm">
+        <!-- Type selection: Lost vs Found -->
+        <div class="report-type-toggle">
+          <label class="type-toggle-btn active-lost" id="typeLostLabel">
+            <input type="radio" name="reportType" value="lost" checked>
+            🔴 I Lost Something
+          </label>
+          <label class="type-toggle-btn" id="typeFoundLabel">
+            <input type="radio" name="reportType" value="found">
+            🟢 I Found Something
+          </label>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-group">
+            <label for="lfTitle">Item Name / Title *</label>
+            <input type="text" id="lfTitle" placeholder="e.g. Blue Boat Earbuds in black case" required maxlength="80">
+          </div>
+          <div class="form-group">
+            <label for="lfCategory">Category *</label>
+            <select id="lfCategory" required>
+              <option value="electronics">🎧 Electronics &amp; Gadgets</option>
+              <option value="id_keys">🪪 ID Cards &amp; Keys</option>
+              <option value="books">📚 Books &amp; Stationery</option>
+              <option value="bags_cloths">🎒 Bags &amp; Apparel</option>
+              <option value="bottles">🥤 Bottles &amp; Lunchboxes</option>
+              <option value="other">🏷️ Other</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-group">
+            <label for="lfLocation">Campus Location *</label>
+            <input type="text" id="lfLocation" placeholder="e.g. 2nd Floor Library, Lab 304, Canteen" required maxlength="80">
+          </div>
+          <div class="form-group">
+            <label for="lfDate">Date *</label>
+            <input type="date" id="lfDate" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="lfDescription">Description &amp; Identifying Details *</label>
+          <textarea id="lfDescription" rows="2" placeholder="Color, brand, stickers, scratches, or where you left/found it..." required maxlength="400"></textarea>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-group">
+            <label for="lfContact">Contact Note / Handover Location</label>
+            <input type="text" id="lfContact" placeholder="e.g. Deposited with security guard, or DM me on Hub" maxlength="100">
+          </div>
+          <div class="form-group">
+            <label>Item Photo (Optional)</label>
+            <div class="lf-photo-input-wrap">
+              <input type="file" id="lfPhotoInput" accept="image/*" style="display:none;">
+              <button type="button" class="btn btn-sm" id="lfChoosePhotoBtn">📷 Choose Photo</button>
+              <span id="lfPhotoName" class="lf-photo-name">No file selected</span>
+              <button type="button" id="lfRemovePhotoBtn" class="lf-photo-remove" style="display:none;" title="Remove photo">✕</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Image thumbnail preview if selected -->
+        <div id="lfPhotoPreviewWrap" class="lf-photo-preview-wrap" style="display:none;">
+          <img id="lfPhotoPreview" src="" alt="Item Preview">
+        </div>
+
+        <div class="report-form-actions">
+          <button type="button" class="btn btn-cancel btn-sm" id="cancelReportBtn">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm" id="submitLfBtn">Publish Report 🚀</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Search & Filters Toolbar -->
+    <div class="lostfound-toolbar">
+      <div class="lf-search-box">
+        <span class="lf-search-icon">🔍</span>
+        <input type="text" id="lfSearchInput" placeholder="Search by item name, location, or keyword..." autocomplete="off">
+        <button type="button" id="lfClearSearch" class="lf-clear-search" style="display:none;" title="Clear">✕</button>
+      </div>
+
+      <div class="lf-filter-row">
+        <div class="lf-pills">
+          <button class="lf-pill active" data-filter="all" type="button">All (<span id="lfCountAll">0</span>)</button>
+          <button class="lf-pill" data-filter="lost" type="button">🔴 Lost (<span id="lfCountLost">0</span>)</button>
+          <button class="lf-pill" data-filter="found" type="button">🟢 Found (<span id="lfCountFound">0</span>)</button>
+          <button class="lf-pill" data-filter="mine" type="button">👤 My Reports (<span id="lfCountMine">0</span>)</button>
+        </div>
+        <select id="lfCategoryFilter" class="lf-category-select">
+          <option value="all">All Categories</option>
+          <option value="electronics">🎧 Electronics</option>
+          <option value="id_keys">🪪 ID / Keys</option>
+          <option value="books">📚 Books</option>
+          <option value="bags_cloths">🎒 Bags / Clothes</option>
+          <option value="bottles">🥤 Bottles</option>
+          <option value="other">🏷️ Other</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Items Grid / List -->
+    <div class="lostfound-items-container" id="lostFoundItemsContainer">
+      <div class="lf-loading">
+        <div class="loader" style="width:28px;height:28px;margin:24px auto;"></div>
+        <p style="text-align:center;color:var(--text-muted);font-size:13px;">Loading campus reports...</p>
+      </div>
+    </div>
+
   </div>
 </div>
 

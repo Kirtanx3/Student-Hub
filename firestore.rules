@@ -1,9 +1,16 @@
-﻿service cloud.firestore {
+service cloud.firestore {
   match /databases/{database}/documents {
 
     // General guard – in all sub‑rules the user must be logged in
     match /{document=**} {
       allow read, write: if false;
+    }
+
+    // ---------- 0️⃣  Users Collection (profiles & student discovery) ----------
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null && request.auth.uid == userId;
+      allow delete: if false;
     }
 
     // ---------- 1️⃣  Chat Requests (user can send, receiver can accept/reject) ---------
@@ -79,6 +86,18 @@
         allow read, write: if request.auth != null &&
                             request.auth.uid in get(/databases/$(database)/documents/conversations/$(convId)).data.participants;
       }
+    }
+
+    // ---------- 6️⃣  Campus Lost & Found ----------
+    match /lostAndFound/{itemId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null &&
+                    request.auth.uid == request.resource.data.reporterUid;
+      allow update: if request.auth != null &&
+                    (request.auth.uid == resource.data.reporterUid ||
+                     request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'resolvedAt', 'resolvedBy']));
+      allow delete: if request.auth != null &&
+                    request.auth.uid == resource.data.reporterUid;
     }
   }
 }

@@ -111,8 +111,10 @@ const dashboardPage = $('dashboardPage');
 const forgotModal = $('forgotModal');
 const logoutModal = $('logoutModal');
 
-// ===== ROLE TOGGLE =====
+// ===== ROLE TOGGLE & USER STATE =====
 let selectedRole = 'student';
+let currentProfileUsername = '';
+let currentUserProfileData = {};
 
 $('loginStudentBtn').addEventListener('click', function() {
   selectedRole = 'student';
@@ -390,6 +392,7 @@ async function loadDashboard(user) {
   const email = user.email;
   
   let displayName = getFirstName(email.split('@')[0]);
+  let currentUsername = (email.split('@')[0]).toLowerCase().replace(/[^a-z0-9_]/g, '') || 'user';
 
   document.querySelector('.welcome-text').textContent = getGreeting() + ' 👋';
 
@@ -414,10 +417,22 @@ async function loadDashboard(user) {
       if (data.name) {
         displayName = getFirstName(data.name);
       }
+      if (data.username) {
+        currentUsername = data.username.toLowerCase();
+      } else {
+        // Auto-save username for existing accounts
+        updateDoc(doc(db, 'users', user.uid), { username: currentUsername }).catch(e => console.warn('Auto username sync:', e));
+      }
+      currentUserProfileData = { ...data, uid: user.uid, username: currentUsername, displayName: data.name || displayName, photoURL };
+    } else {
+      currentUserProfileData = { uid: user.uid, username: currentUsername, displayName, photoURL: '' };
     }
   } catch(e) { 
     console.warn('User data load:', e); 
+    currentUserProfileData = { uid: user.uid, username: currentUsername, displayName, photoURL: '' };
   }
+
+  currentProfileUsername = currentUsername;
 
   ['welcomeName', 'profileName', 'userName', 'fullName'].forEach(id => {
     const el = $(id);
@@ -427,6 +442,9 @@ async function loadDashboard(user) {
     const el = $(id);
     if (el) el.textContent = email;
   });
+
+  if ($('topbarUsername')) $('topbarUsername').textContent = `@${currentUsername}`;
+  if ($('myUsernameDisplay')) $('myUsernameDisplay').textContent = `@${currentUsername}`;
 
   const isTeacher = role === 'teacher';
   
@@ -509,6 +527,8 @@ async function loadDashboard(user) {
   } else {
     watchActiveSessions(courseKey);
   }
+  watchIncomingRequests();
+  initLostAndFound();
   
   setInterval(() => {
     document.querySelector('.welcome-text').textContent = getGreeting() + ' 👋';
@@ -614,6 +634,8 @@ onAuthStateChanged(auth, async user => {
       if (teacherSessionUnsub) { teacherSessionUnsub(); teacherSessionUnsub = null; }
       if (checkinUnsub) { checkinUnsub(); checkinUnsub = null; }
       if (studentSessionsUnsub) { studentSessionsUnsub(); studentSessionsUnsub = null; }
+      if (incomingReqUnsub) { incomingReqUnsub(); incomingReqUnsub = null; }
+      if (friendsUnsub) { friendsUnsub(); friendsUnsub = null; }
       stopScanner();
       stopRotatingQR();
       
@@ -768,9 +790,11 @@ $('signupForm').addEventListener('submit', async e => {
   try {
     const cred = await createUserWithEmailAndPassword(auth, email, password);
     
+    const generatedUsername = email.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '') || ('user_' + Math.random().toString(36).slice(2, 6));
     const userData = {
       name,
       email,
+      username: generatedUsername,
       role: role,
       photoURL: '',
       createdAt: new Date().toISOString()
@@ -1180,6 +1204,9 @@ document.querySelectorAll('.nav-item:not(.logout-btn)').forEach(item => {
       }
       if (view === 'checkin') {
         updateGeoBadge();
+      }
+      if (view === 'friends') {
+        watchMyFriends();
       }
     }
   });
@@ -1739,6 +1766,7 @@ $('confirmLogoutBtn')?.addEventListener('click', async function() {
   stopScanner();
   if (checkinUnsub) { checkinUnsub(); checkinUnsub = null; }
   if (studentSessionsUnsub) { studentSessionsUnsub(); studentSessionsUnsub = null; }
+  if (lostFoundUnsub) { lostFoundUnsub(); lostFoundUnsub = null; }
   
   // End any active session owned by this teacher
   if (activeSessionId) {
@@ -1785,138 +1813,1164 @@ $('signupPassword')?.addEventListener('input', function() {
   bar.style.background = colors[Math.min(Math.floor(score / 1.5), 4)] || 'var(--border)';
 });
 
-// ===== FRIEND REQUEST SYSTEM =====
-async function getUidByUsername(username) {
-  const q = query(collection(db, 'users'), where('username', '==', username.toLowerCase()), limit(1));
-  const snap = await getDocs(q);
-  if (snap.empty) return null;
-  return snap.docs[0].id;
-}
+// ==================================================================
+// ===== FRIEND REQUEST & USERNAME SEARCH SYSTEM ====================
+// ==================================================================
 
-async function sendFriendRequest(targetUsername) {
-  const me = auth.currentUser.uid;
-  const targetUid = await getUidByUsername(targetUsername);
-  if (!targetUid) { showToast('❌ User not found', 'error'); return; }
-  if (targetUid === me) { showToast('❌ You cannot add yourself', 'error'); return; }
+// Search users in Firestore by username with prefix matching and fallback
+async function searchUsersByUsername(rawQuery) {
+  const me = auth.currentUser ? auth.currentUser.uid : null;
+  const clean = (rawQuery || '').trim().toLowerCase().replace(/^@/, '');
+  if (!clean) return [];
 
-  const existing = await getDocs(query(
-    collection(db, 'friendRequests'),
-    where('fromUid', '==', me),
-    where('toUid', '==', targetUid),
-    where('status', '==', 'pending')
-  ));
-  if (!existing.empty) { showToast('⏳ Request already sent', 'info'); return; }
+  const foundUsersMap = new Map();
 
-  await addDoc(collection(db, 'friendRequests'), {
-    fromUid: me,
-    toUid: targetUid,
-    status: 'pending',
-    createdAt: serverTimestamp()
-  });
-  showToast('🚀 Friend request sent!', 'success');
-}
+  try {
+    // 1. Primary Query: Search by username prefix
+    const q1 = query(
+      collection(db, 'users'),
+      where('username', '>=', clean),
+      where('username', '<=', clean + '\uf8ff'),
+      limit(10)
+    );
+    const snap1 = await getDocs(q1);
+    snap1.forEach(docSnap => {
+      foundUsersMap.set(docSnap.id, { id: docSnap.id, ...docSnap.data() });
+    });
 
-let incomingReqUnsub = null;
-function watchIncomingRequests() {
-  const me = auth.currentUser.uid;
-  if (incomingReqUnsub) incomingReqUnsub();
-  incomingReqUnsub = onSnapshot(
-    query(collection(db, 'friendRequests'), where('toUid', '==', me), where('status', '==', 'pending')),
-    snap => {
-      const container = document.getElementById('incomingRequestsList');
-      container.innerHTML = '';
-      snap.forEach(doc => {
-        const d = doc.data();
-        const card = document.createElement('div');
-        card.className = 'request-card';
-        card.innerHTML = `
-          <strong>${escapeHtml(d.fromUid)}</strong> wants to be friends
-          <button class="btn btn-sm btn-primary accept" data-id="${doc.id}">Accept</button>
-          <button class="btn btn-sm btn-danger decline" data-id="${doc.id}">Decline</button>
-        `;
-        container.appendChild(card);
+    // 2. Fallback Query if few results: search a recent slice of users to match name or email prefix
+    if (foundUsersMap.size < 5) {
+      const qAll = query(collection(db, 'users'), limit(50));
+      const snapAll = await getDocs(qAll);
+      snapAll.forEach(docSnap => {
+        const uData = docSnap.data();
+        const uname = (uData.username || (uData.email ? uData.email.split('@')[0] : '')).toLowerCase();
+        const dname = (uData.name || '').toLowerCase();
+        const mail = (uData.email || '').toLowerCase();
+
+        if (uname.includes(clean) || dname.includes(clean) || mail.startsWith(clean)) {
+          foundUsersMap.set(docSnap.id, { id: docSnap.id, ...uData });
+        }
       });
-      container.querySelectorAll('.accept').forEach(b => b.onclick = () => respondRequest(b.dataset.id, true));
-      container.querySelectorAll('.decline').forEach(b => b.onclick = () => respondRequest(b.dataset.id, false));
-    });
-}
+    }
 
-async function respondRequest(reqId, accept) {
-  const me = auth.currentUser.uid;
-  const ref = doc(db, 'friendRequests', reqId);
-  const newStatus = accept ? 'accepted' : 'declined';
-  await updateDoc(ref, { status: newStatus });
+    // 3. Collect and evaluate friendship/request relationship status
+    const results = [];
+    for (const [targetUid, uData] of foundUsersMap.entries()) {
+      const username = (uData.username || (uData.email ? uData.email.split('@')[0] : 'user')).toLowerCase();
+      const displayName = uData.name || uData.displayName || (uData.email ? uData.email.split('@')[0] : 'Student');
+      const courseLabel = uData.courseLabel || uData.department || (uData.role === 'teacher' ? 'Teacher' : 'Student');
+      const photoURL = uData.photoURL || '';
 
-  if (accept) {
-    const reqSnap = await getDoc(ref);
-    const { fromUid, toUid } = reqSnap.data();
-    const participants = [fromUid, toUid].sort();
-    const fsRef = doc(collection(db, 'friendships'), participants.join('_'));
-    await setDoc(fsRef, { participants, createdAt: serverTimestamp() });
+      let relStatus = 'none'; // 'self' | 'friends' | 'sent' | 'received' | 'none'
+      let reqId = null;
 
-    const chatRef = doc(collection(db, 'conversations'), participants.join('_'));
-    await setDoc(chatRef, {
-      participants,
-      lastMessage: '',
-      updatedAt: serverTimestamp()
-    });
-    showToast('✅ Friend added – you can now chat!', 'success');
-  } else {
-    showToast('❌ Request declined', 'info');
+      if (!me) {
+        relStatus = 'none';
+      } else if (targetUid === me) {
+        relStatus = 'self';
+      } else {
+        // Check if already friends
+        try {
+          const fsDocId = [me, targetUid].sort().join('_');
+          const fsDoc = await getDoc(doc(db, 'friendships', fsDocId));
+          if (fsDoc.exists()) {
+            relStatus = 'friends';
+          } else {
+            // Check if outgoing request sent
+            const outSnap = await getDocs(query(
+              collection(db, 'friendRequests'),
+              where('fromUid', '==', me),
+              where('toUid', '==', targetUid),
+              where('status', '==', 'pending'),
+              limit(1)
+            ));
+            if (!outSnap.empty) {
+              relStatus = 'sent';
+            } else {
+              // Check if incoming request received
+              const inSnap = await getDocs(query(
+                collection(db, 'friendRequests'),
+                where('fromUid', '==', targetUid),
+                where('toUid', '==', me),
+                where('status', '==', 'pending'),
+                limit(1)
+              ));
+              if (!inSnap.empty) {
+                relStatus = 'received';
+                reqId = inSnap.docs[0].id;
+              }
+            }
+          }
+        } catch(err) {
+          console.warn('Relationship check error:', err);
+        }
+      }
+
+      results.push({
+        uid: targetUid,
+        username,
+        name: displayName,
+        courseLabel,
+        photoURL,
+        status: relStatus,
+        reqId
+      });
+    }
+
+    return results;
+  } catch (err) {
+    console.error('Error searching users:', err);
+    return [];
   }
 }
 
+// Render search results inside popup
+function renderSearchResults(results, queryTerm) {
+  const popup = document.getElementById('addFriendResultsPopup');
+  const list = document.getElementById('addFriendResultsList');
+  const title = document.getElementById('popupResultsTitle');
+  if (!popup || !list) return;
+
+  if (title) {
+    title.textContent = `Users Found (${results.length})`;
+  }
+
+  if (results.length === 0) {
+    list.innerHTML = `
+      <div class="popup-empty">
+        <span class="empty-icon">🔍</span>
+        <p style="margin-bottom:4px;">No user found matching "<strong>@${escapeHtml(queryTerm)}</strong>"</p>
+        <span style="font-size:12px;color:var(--text-muted);">Check the spelling or try searching another username.</span>
+      </div>
+    `;
+    popup.style.display = 'block';
+    return;
+  }
+
+  let html = '';
+  results.forEach(u => {
+    const avatarContent = u.photoURL
+      ? `<img src="${escapeHtml(u.photoURL)}" alt="${escapeHtml(u.name)}">`
+      : escapeHtml((u.name || u.username || 'U').charAt(0).toUpperCase());
+
+    let actionHtml = '';
+    if (u.status === 'self') {
+      actionHtml = `<span class="status-pill self">You</span>`;
+    } else if (u.status === 'friends') {
+      actionHtml = `<span class="status-pill friends">✓ Friends</span>`;
+    } else if (u.status === 'sent') {
+      actionHtml = `<span class="status-pill sent">⏳ Request Sent</span>`;
+    } else if (u.status === 'received') {
+      actionHtml = `<button class="btn btn-sm btn-primary accept-search-btn" data-reqid="${u.reqId}">Accept Req</button>`;
+    } else {
+      actionHtml = `<button class="btn-send-req" data-uid="${u.uid}" data-username="${escapeHtml(u.username)}" data-name="${escapeHtml(u.name)}" id="sendReq_${u.uid}">➕ Send Req</button>`;
+    }
+
+    html += `
+      <div class="search-user-item" data-uid="${u.uid}">
+        <div class="search-user-left">
+          <div class="search-user-avatar">${avatarContent}</div>
+          <div class="search-user-details">
+            <div class="search-user-name">${escapeHtml(u.name)}</div>
+            <div class="search-user-handle">@${escapeHtml(u.username)}</div>
+            <span class="search-user-course">${escapeHtml(u.courseLabel)}</span>
+          </div>
+        </div>
+        <div class="search-user-action">${actionHtml}</div>
+      </div>
+    `;
+  });
+
+  list.innerHTML = html;
+  popup.style.display = 'block';
+
+  // Wire up "Send Req" buttons
+  list.querySelectorAll('.btn-send-req').forEach(btn => {
+    btn.onclick = async () => {
+      const targetUid = btn.dataset.uid;
+      const targetUsername = btn.dataset.username;
+      const targetName = btn.dataset.name;
+
+      btn.disabled = true;
+      btn.innerHTML = '⏳ Sending...';
+
+      const success = await sendFriendRequestToUid(targetUid, targetUsername, targetName);
+      if (success) {
+        btn.outerHTML = `<span class="status-pill sent">✓ Sent</span>`;
+      } else {
+        btn.disabled = false;
+        btn.innerHTML = '➕ Send Req';
+      }
+    };
+  });
+
+  // Wire up "Accept Req" buttons if someone already requested them
+  list.querySelectorAll('.accept-search-btn').forEach(btn => {
+    btn.onclick = async () => {
+      btn.disabled = true;
+      btn.textContent = 'Accepting...';
+      await respondRequest(btn.dataset.reqid, true);
+      btn.outerHTML = `<span class="status-pill friends">✓ Friends</span>`;
+    };
+  });
+}
+
+// Send friend request to a target UID
+async function sendFriendRequestToUid(targetUid, targetUsername, targetName) {
+  if (!auth.currentUser) {
+    showToast('❌ Please log in first', 'error');
+    return false;
+  }
+  const me = auth.currentUser.uid;
+  if (targetUid === me) {
+    showToast('❌ You cannot send a friend request to yourself', 'error');
+    return false;
+  }
+
+  try {
+    // Check if friendship already exists
+    const fsRef = doc(db, 'friendships', [me, targetUid].sort().join('_'));
+    const fsSnap = await getDoc(fsRef);
+    if (fsSnap.exists()) {
+      showToast('You are already friends!', 'info');
+      return true;
+    }
+
+    // Check existing pending request
+    const existing = await getDocs(query(
+      collection(db, 'friendRequests'),
+      where('fromUid', '==', me),
+      where('toUid', '==', targetUid),
+      where('status', '==', 'pending')
+    ));
+    if (!existing.empty) {
+      showToast('⏳ Friend request is already pending', 'info');
+      return true;
+    }
+
+    const myName = currentUserProfileData.displayName || currentUserProfileData.name || (currentUser.email ? currentUser.email.split('@')[0] : 'Student');
+    const myUsername = currentProfileUsername || (currentUser.email ? currentUser.email.split('@')[0] : 'user');
+    const myPhoto = currentUserProfileData.photoURL || '';
+
+    await addDoc(collection(db, 'friendRequests'), {
+      fromUid: me,
+      fromName: myName,
+      fromUsername: myUsername,
+      fromPhotoURL: myPhoto,
+      toUid: targetUid,
+      toUsername: targetUsername || '',
+      status: 'pending',
+      createdAt: serverTimestamp()
+    });
+
+    showToast(`🚀 Friend request sent to @${targetUsername}!`, 'success');
+    return true;
+  } catch (err) {
+    console.error('Error sending friend request:', err);
+    showToast('❌ Failed to send friend request. Try again.', 'error');
+    return false;
+  }
+}
+
+// Watch incoming friend requests and update badge count
+let incomingReqUnsub = null;
+function watchIncomingRequests() {
+  if (!auth.currentUser) return;
+  const me = auth.currentUser.uid;
+  if (incomingReqUnsub) incomingReqUnsub();
+
+  incomingReqUnsub = onSnapshot(
+    query(collection(db, 'friendRequests'), where('toUid', '==', me), where('status', '==', 'pending')),
+    async snap => {
+      // Update badge on Friend Requests button
+      const badge = document.getElementById('friendRequestsCountBadge');
+      if (badge) {
+        if (snap.size > 0) {
+          badge.textContent = snap.size > 9 ? '9+' : snap.size;
+          badge.style.display = 'inline-block';
+        } else {
+          badge.style.display = 'none';
+        }
+      }
+
+      const container = document.getElementById('incomingRequestsList');
+      if (!container) return;
+
+      if (snap.empty) {
+        container.innerHTML = `
+          <div style="text-align:center;padding:24px 12px;color:var(--text-muted);">
+            <span style="font-size:32px;display:block;margin-bottom:8px;">📬</span>
+            <p style="margin:0;font-size:14px;color:var(--text-secondary);font-weight:600;">No pending friend requests</p>
+            <p style="margin:4px 0 0;font-size:12px;">When someone sends you a request, it will appear here!</p>
+          </div>
+        `;
+        return;
+      }
+
+      let cardsHtml = '';
+      const docsData = [];
+
+      for (const docSnap of snap.docs) {
+        const d = docSnap.data();
+        let fromName = d.fromName;
+        let fromUsername = d.fromUsername;
+        let fromPhoto = d.fromPhotoURL || '';
+
+        // If legacy request without sender profile details, fetch user doc
+        if (!fromName) {
+          try {
+            const senderSnap = await getDoc(doc(db, 'users', d.fromUid));
+            if (senderSnap.exists()) {
+              const sData = senderSnap.data();
+              fromName = sData.name || sData.displayName || d.fromUid;
+              fromUsername = sData.username || (sData.email ? sData.email.split('@')[0] : '');
+              fromPhoto = sData.photoURL || '';
+            }
+          } catch(e) {
+            fromName = 'Student';
+          }
+        }
+
+        docsData.push({
+          id: docSnap.id,
+          fromName: fromName || 'Student',
+          fromUsername: fromUsername ? `@${fromUsername}` : '',
+          fromPhoto
+        });
+      }
+
+      docsData.forEach(item => {
+        const avatarContent = item.fromPhoto
+          ? `<img src="${escapeHtml(item.fromPhoto)}" alt="${escapeHtml(item.fromName)}">`
+          : escapeHtml(item.fromName.charAt(0).toUpperCase());
+
+        cardsHtml += `
+          <div class="request-card">
+            <div class="request-user-info">
+              <div class="request-user-avatar">${avatarContent}</div>
+              <div style="display:flex;flex-direction:column;min-width:0;">
+                <strong style="font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(item.fromName)}</strong>
+                <span style="font-size:12px;color:var(--primary);">${escapeHtml(item.fromUsername)} wants to be friends</span>
+              </div>
+            </div>
+            <div class="request-actions">
+              <button class="btn btn-sm btn-primary accept" data-id="${item.id}" title="Accept">Accept</button>
+              <button class="btn btn-sm btn-danger decline" data-id="${item.id}" title="Decline">Decline</button>
+            </div>
+          </div>
+        `;
+      });
+
+      container.innerHTML = cardsHtml;
+      container.querySelectorAll('.accept').forEach(b => b.onclick = () => respondRequest(b.dataset.id, true));
+      container.querySelectorAll('.decline').forEach(b => b.onclick = () => respondRequest(b.dataset.id, false));
+    },
+    err => {
+      console.warn('Friend requests error:', err);
+    }
+  );
+}
+
+// Respond to friend request (accept or decline)
+async function respondRequest(reqId, accept) {
+  if (!auth.currentUser) return;
+  const me = auth.currentUser.uid;
+  const ref = doc(db, 'friendRequests', reqId);
+  const newStatus = accept ? 'accepted' : 'declined';
+
+  try {
+    if (accept) {
+      const reqSnap = await getDoc(ref);
+      if (!reqSnap.exists()) return;
+      const { fromUid, toUid } = reqSnap.data();
+      const participants = [fromUid, toUid].sort();
+      const fsRef = doc(collection(db, 'friendships'), participants.join('_'));
+      await setDoc(fsRef, { participants, createdAt: serverTimestamp() });
+
+      const chatRef = doc(collection(db, 'conversations'), participants.join('_'));
+      await setDoc(chatRef, {
+        participants,
+        lastMessage: '',
+        updatedAt: serverTimestamp()
+      });
+
+      await updateDoc(ref, { status: newStatus });
+      showToast('✅ Friend added – you can now chat!', 'success');
+      watchMyFriends();
+    } else {
+      await updateDoc(ref, { status: newStatus });
+      showToast('❌ Request declined', 'info');
+    }
+  } catch(err) {
+    console.error('Error responding to request:', err);
+    showToast('⚠️ Could not update request', 'error');
+  }
+}
+
+// Watch friendships for current user
 let friendsUnsub = null;
 function watchMyFriends() {
+  if (!auth.currentUser) return;
   const me = auth.currentUser.uid;
   if (friendsUnsub) friendsUnsub();
+
   friendsUnsub = onSnapshot(
     query(collection(db, 'friendships'), where('participants', 'array-contains', me)),
-    snap => {
+    async snap => {
       const list = document.getElementById('friendsList');
-      list.innerHTML = '';
-      snap.forEach(doc => {
-        const buddyUid = doc.data().participants.find(u => u !== me);
-        getDoc(doc(db, 'users', buddyUid)).then(uSnap => {
-          const u = uSnap.data();
-          const item = document.createElement('div');
-          item.className = 'friend-item';
-          item.innerHTML = `
-            <img src="${u.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.displayName)}`}" class="avatar-sm">
-            <span>${escapeHtml(u.displayName)}</span>
-            <button class="btn btn-sm btn-primary chat-btn" data-chat="${[me, buddyUid].sort().join('_')}">Chat</button>
-          `;
-          list.appendChild(item);
+      if (!list) return;
+
+      if (snap.empty) {
+        list.innerHTML = `
+          <div style="text-align:center;padding:36px 16px;color:var(--text-muted);">
+            <span style="font-size:42px;display:block;margin-bottom:8px;">👥</span>
+            <p style="font-size:16px;font-weight:600;color:var(--text-primary);margin-bottom:6px;">No Friends Added Yet</p>
+            <p style="font-size:13px;max-width:320px;margin:0 auto 16px;">Search students by username on your dashboard to send friend requests and chat!</p>
+            <button class="btn btn-primary btn-sm" id="emptyAddFriendBtn" style="margin:0 auto;">➕ Find Friends</button>
+          </div>
+        `;
+        document.getElementById('emptyAddFriendBtn')?.addEventListener('click', () => {
+          document.querySelector('.nav-item[data-view="dashboard"]')?.click();
+          setTimeout(() => {
+            document.getElementById('addFriendInput')?.focus();
+          }, 150);
         });
+        return;
+      }
+
+      list.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-muted);">Loading friends...</div>';
+
+      const friendItems = [];
+      for (const docSnap of snap.docs) {
+        const buddyUid = docSnap.data().participants.find(u => u !== me);
+        if (!buddyUid) continue;
+
+        try {
+          const uSnap = await getDoc(doc(db, 'users', buddyUid));
+          if (uSnap.exists()) {
+            const u = uSnap.data();
+            const displayName = u.name || u.displayName || (u.email ? u.email.split('@')[0] : 'Friend');
+            const username = u.username ? `@${u.username}` : '';
+            const photoURL = u.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=4f46e5&color=fff`;
+            const courseLabel = u.courseLabel || u.department || 'Student';
+
+            friendItems.push({
+              uid: buddyUid,
+              displayName,
+              username,
+              photoURL,
+              courseLabel,
+              chatId: [me, buddyUid].sort().join('_')
+            });
+          }
+        } catch(e) {
+          console.warn('Error loading friend:', e);
+        }
+      }
+
+      if (friendItems.length === 0) {
+        list.innerHTML = `<div style="text-align:center;padding:24px;color:var(--text-muted);">No friends found</div>`;
+        return;
+      }
+
+      let html = '';
+      friendItems.forEach(f => {
+        html += `
+          <div class="friend-item">
+            <div class="friend-left">
+              <img src="${escapeHtml(f.photoURL)}" class="avatar-sm" alt="${escapeHtml(f.displayName)}">
+              <div style="display:flex;flex-direction:column;">
+                <strong style="font-size:14px;color:var(--text-primary);">${escapeHtml(f.displayName)}</strong>
+                <div style="display:flex;align-items:center;gap:6px;font-size:12px;">
+                  <span style="color:var(--primary);font-weight:600;">${escapeHtml(f.username)}</span>
+                  <span style="color:var(--text-muted);">&bull;</span>
+                  <span style="color:var(--text-muted);font-size:11px;">${escapeHtml(f.courseLabel)}</span>
+                </div>
+              </div>
+            </div>
+            <button class="btn btn-sm btn-primary chat-btn" data-chat="${f.chatId}">💬 Chat</button>
+          </div>
+        `;
       });
+
+      list.innerHTML = html;
       list.querySelectorAll('.chat-btn').forEach(b => {
         b.onclick = () => openPrivateChat(b.dataset.chat);
       });
-    });
+    },
+    err => {
+      console.warn('Friends list listener error:', err);
+    }
+  );
 }
 
 function openPrivateChat(chatId) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelector('.nav-item[data-view="chat"]')?.classList.add('active');
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.getElementById('view-chat').classList.add('active');
+  document.getElementById('view-chat')?.classList.add('active');
   if (typeof loadChat === 'function') {
     loadChat(chatId);
   }
 }
 
+// ===== EVENT LISTENERS: ADD FRIEND SEARCH & MODALS =====
+let searchDebounceTimer = null;
 
-// ===== FRIEND REQUEST UI =====
-document.getElementById('addFriendBtn')?.addEventListener('click', () => {
-  const username = document.getElementById('addFriendInput').value.trim();
+const addFriendInput = document.getElementById('addFriendInput');
+const addFriendClearBtn = document.getElementById('addFriendClearBtn');
+const addFriendBtn = document.getElementById('addFriendBtn');
+const addFriendResultsPopup = document.getElementById('addFriendResultsPopup');
+const closeSearchPopupBtn = document.getElementById('closeSearchPopupBtn');
+const copyMyUsernameBtn = document.getElementById('copyMyUsernameBtn');
+const jumpToAddFriendBtn = document.getElementById('jumpToAddFriendBtn');
+
+// Debounced live search
+addFriendInput?.addEventListener('input', () => {
+  const val = addFriendInput.value.trim();
+  if (addFriendClearBtn) {
+    addFriendClearBtn.style.display = val ? 'flex' : 'none';
+  }
+
+  if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+
+  if (!val) {
+    if (addFriendResultsPopup) addFriendResultsPopup.style.display = 'none';
+    return;
+  }
+
+  // Show searching state immediately
+  if (addFriendResultsPopup) {
+    const list = document.getElementById('addFriendResultsList');
+    if (list) {
+      list.innerHTML = `
+        <div class="popup-empty">
+          <span class="empty-icon">⏳</span>
+          <p style="margin:0;">Searching for <strong>@${escapeHtml(val.replace(/^@/, ''))}</strong>...</p>
+        </div>
+      `;
+    }
+    addFriendResultsPopup.style.display = 'block';
+  }
+
+  searchDebounceTimer = setTimeout(async () => {
+    const cleanTerm = addFriendInput.value.trim().replace(/^@/, '');
+    if (!cleanTerm) return;
+    const results = await searchUsersByUsername(cleanTerm);
+    renderSearchResults(results, cleanTerm);
+  }, 250);
+});
+
+// Search button click & Enter key
+const triggerInstantSearch = async () => {
+  const val = addFriendInput ? addFriendInput.value.trim().replace(/^@/, '') : '';
+  if (!val) {
+    showToast('Please type a username to search', 'info');
+    return;
+  }
+  if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+
+  if (addFriendResultsPopup) {
+    const list = document.getElementById('addFriendResultsList');
+    if (list) {
+      list.innerHTML = `
+        <div class="popup-empty">
+          <span class="empty-icon">⏳</span>
+          <p style="margin:0;">Searching for <strong>@${escapeHtml(val)}</strong>...</p>
+        </div>
+      `;
+    }
+    addFriendResultsPopup.style.display = 'block';
+  }
+
+  const results = await searchUsersByUsername(val);
+  renderSearchResults(results, val);
+};
+
+addFriendBtn?.addEventListener('click', triggerInstantSearch);
+addFriendInput?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    triggerInstantSearch();
+  } else if (e.key === 'Escape') {
+    if (addFriendResultsPopup) addFriendResultsPopup.style.display = 'none';
+  }
+});
+
+// Clear button
+addFriendClearBtn?.addEventListener('click', () => {
+  if (addFriendInput) {
+    addFriendInput.value = '';
+    addFriendInput.focus();
+  }
+  if (addFriendClearBtn) addFriendClearBtn.style.display = 'none';
+  if (addFriendResultsPopup) addFriendResultsPopup.style.display = 'none';
+});
+
+// Close popup button
+closeSearchPopupBtn?.addEventListener('click', () => {
+  if (addFriendResultsPopup) addFriendResultsPopup.style.display = 'none';
+});
+
+// Close popup on outside click
+document.addEventListener('click', (e) => {
+  const searchContainer = document.getElementById('friendSearchContainer');
+  if (searchContainer && !searchContainer.contains(e.target)) {
+    if (addFriendResultsPopup) addFriendResultsPopup.style.display = 'none';
+  }
+});
+
+// Copy my username button
+copyMyUsernameBtn?.addEventListener('click', () => {
+  const username = currentProfileUsername || (auth.currentUser?.email ? auth.currentUser.email.split('@')[0] : '');
   if (!username) return;
-  sendFriendRequest(username);
-  document.getElementById('addFriendInput').value = '';
+  navigator.clipboard.writeText(username).then(() => {
+    showToast(`📋 Copied @${username} to clipboard!`, 'success');
+  }).catch(() => {
+    showToast(`@${username}`, 'info');
+  });
 });
+
+// Jump to Add Friend from Friends View
+jumpToAddFriendBtn?.addEventListener('click', () => {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelector('.nav-item[data-view="dashboard"]')?.classList.add('active');
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-dashboard')?.classList.add('active');
+  setTimeout(() => {
+    const input = document.getElementById('addFriendInput');
+    if (input) {
+      input.focus();
+      input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, 100);
+});
+
+// Friend requests modal open/close
 document.getElementById('openFriendRequests')?.addEventListener('click', () => {
-  document.getElementById('friendRequestsModal').style.display = 'flex';
-  watchIncomingRequests();
+  const modal = document.getElementById('friendRequestsModal');
+  if (modal) {
+    modal.style.display = 'flex';
+    watchIncomingRequests();
+  }
 });
+
 document.getElementById('closeFriendReqModal')?.addEventListener('click', () => {
-  document.getElementById('friendRequestsModal').style.display = 'none';
+  const modal = document.getElementById('friendRequestsModal');
+  if (modal) modal.style.display = 'none';
+});
+
+document.getElementById('friendRequestsModal')?.addEventListener('click', (e) => {
+  if (e.target.id === 'friendRequestsModal') {
+    e.target.style.display = 'none';
+  }
+});
+
+// ==================================================================
+// CAMPUS LOST & FOUND MODULE
+// ==================================================================
+let lostFoundUnsub = null;
+let lostFoundItems = [];
+let currentLfFilter = 'all';
+let currentLfCategory = 'all';
+let currentLfSearch = '';
+let lfSelectedPhotoBase64 = '';
+
+const LF_CATEGORY_META = {
+  'electronics': { label: 'Electronics', icon: '🎧' },
+  'id_keys': { label: 'ID & Keys', icon: '🪪' },
+  'books': { label: 'Books & Stationery', icon: '📚' },
+  'bags_cloths': { label: 'Bags & Clothes', icon: '🎒' },
+  'bottles': { label: 'Bottles & Lunchboxes', icon: '🥤' },
+  'other': { label: 'Other', icon: '🏷️' }
+};
+
+function formatLfTime(isoStr) {
+  if (!isoStr) return 'Recently';
+  try {
+    const date = new Date(isoStr);
+    const now = new Date();
+    const diff = Math.floor((now - date) / 1000);
+    if (diff < 60) return 'Just now';
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    if (diff < 172800) return 'Yesterday';
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  } catch (e) {
+    return 'Recently';
+  }
+}
+
+function compressLfImage(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let w = img.width;
+        let h = img.height;
+        const maxD = 600;
+        if (w > maxD || h > maxD) {
+          if (w > h) {
+            h = Math.round((h * maxD) / w);
+            w = maxD;
+          } else {
+            w = Math.round((w * maxD) / h);
+            h = maxD;
+          }
+        }
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.72));
+      };
+      img.onerror = () => reject(new Error('Image decode error'));
+      img.src = e.target.result;
+    };
+    reader.onerror = () => reject(new Error('File read error'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function updateLostFoundCounters() {
+  const myUid = auth.currentUser ? auth.currentUser.uid : '';
+  const activeUnresolved = lostFoundItems.filter(i => i.status !== 'resolved').length;
+  
+  const countBadge = document.getElementById('lostFoundCountBadge');
+  if (countBadge) {
+    if (activeUnresolved > 0) {
+      countBadge.textContent = activeUnresolved > 99 ? '99+' : activeUnresolved;
+      countBadge.style.display = 'inline-block';
+    } else {
+      countBadge.style.display = 'none';
+    }
+  }
+
+  const allCount = lostFoundItems.length;
+  const lostCount = lostFoundItems.filter(i => i.type === 'lost').length;
+  const foundCount = lostFoundItems.filter(i => i.type === 'found').length;
+  const mineCount = myUid ? lostFoundItems.filter(i => i.reporterUid === myUid).length : 0;
+
+  if (document.getElementById('lfCountAll')) document.getElementById('lfCountAll').textContent = allCount;
+  if (document.getElementById('lfCountLost')) document.getElementById('lfCountLost').textContent = lostCount;
+  if (document.getElementById('lfCountFound')) document.getElementById('lfCountFound').textContent = foundCount;
+  if (document.getElementById('lfCountMine')) document.getElementById('lfCountMine').textContent = mineCount;
+}
+
+function renderLostFoundItems() {
+  const container = document.getElementById('lostFoundItemsContainer');
+  if (!container) return;
+
+  const myUid = auth.currentUser ? auth.currentUser.uid : '';
+
+  let filtered = lostFoundItems.filter(item => {
+    // Type/Mine filter
+    if (currentLfFilter === 'lost' && item.type !== 'lost') return false;
+    if (currentLfFilter === 'found' && item.type !== 'found') return false;
+    if (currentLfFilter === 'mine' && item.reporterUid !== myUid) return false;
+
+    // Category filter
+    if (currentLfCategory !== 'all' && item.category !== currentLfCategory) return false;
+
+    // Search query
+    if (currentLfSearch) {
+      const q = currentLfSearch;
+      const t = (item.title || '').toLowerCase();
+      const d = (item.description || '').toLowerCase();
+      const loc = (item.location || '').toLowerCase();
+      const rep = (item.reporterName || item.reporterUsername || '').toLowerCase();
+      if (!t.includes(q) && !d.includes(q) && !loc.includes(q) && !rep.includes(q)) return false;
+    }
+
+    return true;
+  });
+
+  if (filtered.length === 0) {
+    container.innerHTML = `
+      <div class="lf-empty-state">
+        <span class="lf-empty-icon">🎒</span>
+        <h4>No items found</h4>
+        <p>There are no reported items matching your current filters or search terms.</p>
+      </div>
+    `;
+    return;
+  }
+
+  const cardsHtml = filtered.map(item => {
+    const isOwner = myUid && item.reporterUid === myUid;
+    const isResolved = item.status === 'resolved';
+    const catMeta = LF_CATEGORY_META[item.category] || { label: 'General', icon: '🏷️' };
+    
+    let statusClass = 'lost';
+    let statusLabel = '🔴 Lost';
+    if (isResolved) {
+      statusClass = 'resolved';
+      statusLabel = '✅ Resolved';
+    } else if (item.type === 'found') {
+      statusClass = 'found';
+      statusLabel = '🟢 Found';
+    }
+
+    const reporterAvatar = item.reporterAvatar || `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Ccircle cx='20' cy='20' r='20' fill='%234f46e5'/%3E%3Ctext x='50%25' y='55%25' font-size='16' fill='white' font-family='Arial' text-anchor='middle' dominant-baseline='central'%3E${(item.reporterName || 'S').charAt(0)}%3C/text%3E%3C/svg%3E`;
+    const reporterUname = item.reporterUsername ? `@${item.reporterUsername}` : '';
+
+    return `
+      <div class="lf-card ${isResolved ? 'is-resolved' : ''}" data-id="${item.id}">
+        <div class="lf-card-top">
+          <span class="lf-status-tag ${statusClass}">${statusLabel}</span>
+          <span class="lf-category-tag">${catMeta.icon} ${escapeHtml(catMeta.label)}</span>
+        </div>
+
+        ${item.photo ? `
+          <div class="lf-card-image" onclick="window.open('${item.photo}', '_blank')">
+            <img src="${item.photo}" alt="${escapeHtml(item.title)}" loading="lazy">
+          </div>
+        ` : ''}
+
+        <div class="lf-card-body">
+          <h4 class="lf-card-title">${escapeHtml(item.title)}</h4>
+          <p class="lf-card-desc">${escapeHtml(item.description)}</p>
+          
+          <div class="lf-meta-list">
+            <div class="lf-meta-item">
+              <span>📍</span> <span>${escapeHtml(item.location || 'Campus')}</span>
+            </div>
+            <div class="lf-meta-item">
+              <span>📅</span> <span>${item.itemDate || 'Recent'} • ${formatLfTime(item.createdAt)}</span>
+            </div>
+            ${item.contactNote ? `
+              <div class="lf-meta-item" style="color:var(--text-secondary);font-style:italic;">
+                <span>💬</span> <span>"${escapeHtml(item.contactNote)}"</span>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+
+        <div class="lf-card-footer">
+          <div class="lf-reporter-info">
+            <img src="${reporterAvatar}" alt="Reporter" class="lf-reporter-avatar">
+            <div>
+              <div style="font-weight:600;line-height:1.2;">${escapeHtml(item.reporterName || 'Student')}</div>
+              <div style="font-size:11px;color:var(--text-muted);">${escapeHtml(reporterUname)}</div>
+            </div>
+          </div>
+
+          <div class="lf-card-actions">
+            ${isOwner ? `
+              ${!isResolved ? `
+                <button class="btn-lf-action btn-lf-resolve" data-action="resolve" data-id="${item.id}" title="Mark as Reunited / Resolved">
+                  ✅ Resolved
+                </button>
+              ` : ''}
+              <button class="btn-lf-action btn-lf-delete" data-action="delete" data-id="${item.id}" title="Delete Report">
+                🗑️
+              </button>
+            ` : `
+              <button class="btn-lf-action" data-action="contact" data-username="${escapeHtml(item.reporterUsername || '')}" data-name="${escapeHtml(item.reporterName || '')}" data-contact="${escapeHtml(item.contactNote || '')}" title="Contact Reporter">
+                💬 Contact
+              </button>
+            `}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  container.innerHTML = `<div class="lf-grid">${cardsHtml}</div>`;
+
+  // Attach card action listeners
+  container.querySelectorAll('[data-action]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const action = btn.dataset.action;
+      const itemId = btn.dataset.id;
+
+      if (action === 'resolve') {
+        try {
+          btn.disabled = true;
+          await updateDoc(doc(db, 'lostAndFound', itemId), {
+            status: 'resolved',
+            resolvedAt: new Date().toISOString(),
+            resolvedBy: auth.currentUser?.uid || ''
+          });
+          showToast('✅ Marked as reunited/resolved!', 'success');
+        } catch (err) {
+          console.error('Resolve error:', err);
+          showToast('Failed to mark resolved: ' + err.message, 'error');
+        }
+      } else if (action === 'delete') {
+        if (confirm('Are you sure you want to delete this report?')) {
+          try {
+            btn.disabled = true;
+            await deleteDoc(doc(db, 'lostAndFound', itemId));
+            showToast('🗑️ Report deleted.', 'info');
+          } catch (err) {
+            console.error('Delete error:', err);
+            showToast('Failed to delete: ' + err.message, 'error');
+          }
+        }
+      } else if (action === 'contact') {
+        const username = btn.dataset.username;
+        const name = btn.dataset.name;
+        const note = btn.dataset.contact;
+        
+        let msg = `Reach out to ${name}`;
+        if (username) msg += ` (@${username})`;
+        if (note) msg += `\nHandover note: "${note}"`;
+
+        if (username) {
+          navigator.clipboard.writeText(`@${username}`).catch(() => {});
+          showToast(`📋 Copied @${username} to clipboard! Message them on Student Hub.`, 'info');
+        } else {
+          showToast(msg, 'info');
+        }
+      }
+    });
+  });
+}
+
+function initLostAndFound() {
+  if (lostFoundUnsub) {
+    lostFoundUnsub();
+    lostFoundUnsub = null;
+  }
+
+  // Set default today's date in form
+  const dateInput = document.getElementById('lfDate');
+  if (dateInput && !dateInput.value) {
+    dateInput.value = new Date().toISOString().slice(0, 10);
+  }
+
+  try {
+    const q = query(collection(db, 'lostAndFound'), orderBy('createdAt', 'desc'));
+    lostFoundUnsub = onSnapshot(q, (snapshot) => {
+      lostFoundItems = [];
+      snapshot.forEach(docSnap => {
+        lostFoundItems.push({ id: docSnap.id, ...docSnap.data() });
+      });
+      updateLostFoundCounters();
+      renderLostFoundItems();
+    }, (err) => {
+      console.warn('Lost & Found ordered query fallback (composite index):', err);
+      const fallbackQ = query(collection(db, 'lostAndFound'), limit(80));
+      lostFoundUnsub = onSnapshot(fallbackQ, (snapshot) => {
+        lostFoundItems = [];
+        snapshot.forEach(docSnap => {
+          lostFoundItems.push({ id: docSnap.id, ...docSnap.data() });
+        });
+        lostFoundItems.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+        updateLostFoundCounters();
+        renderLostFoundItems();
+      });
+    });
+  } catch (err) {
+    console.error('Init Lost & Found error:', err);
+  }
+}
+
+// Modal open/close
+document.getElementById('openLostFoundBtn')?.addEventListener('click', () => {
+  const modal = document.getElementById('lostFoundModal');
+  if (modal) {
+    modal.style.display = 'flex';
+    const dateInput = document.getElementById('lfDate');
+    if (dateInput && !dateInput.value) {
+      dateInput.value = new Date().toISOString().slice(0, 10);
+    }
+    renderLostFoundItems();
+  }
+});
+
+document.getElementById('closeLostFoundModal')?.addEventListener('click', () => {
+  const modal = document.getElementById('lostFoundModal');
+  if (modal) modal.style.display = 'none';
+});
+
+document.getElementById('lostFoundModal')?.addEventListener('click', (e) => {
+  if (e.target.id === 'lostFoundModal') {
+    e.target.style.display = 'none';
+  }
+});
+
+// Toggle report form
+const toggleReportBtn = document.getElementById('toggleReportFormBtn');
+const cancelReportBtn = document.getElementById('cancelReportBtn');
+const reportPanel = document.getElementById('lostFoundReportPanel');
+const reportBtnIcon = document.getElementById('reportBtnIcon');
+const reportBtnText = document.getElementById('reportBtnText');
+
+function toggleReportForm(show) {
+  if (!reportPanel) return;
+  const isHidden = reportPanel.style.display === 'none';
+  const shouldShow = show !== undefined ? show : isHidden;
+
+  reportPanel.style.display = shouldShow ? 'block' : 'none';
+  if (reportBtnIcon) reportBtnIcon.textContent = shouldShow ? '✕' : '➕';
+  if (reportBtnText) reportBtnText.textContent = shouldShow ? 'Close Form' : 'Report Item';
+
+  if (shouldShow) {
+    document.getElementById('lfTitle')?.focus();
+  }
+}
+
+toggleReportBtn?.addEventListener('click', () => toggleReportForm());
+cancelReportBtn?.addEventListener('click', () => toggleReportForm(false));
+
+// Report Type Toggle (Lost vs Found)
+document.querySelectorAll('input[name="reportType"]').forEach(radio => {
+  radio.addEventListener('change', () => {
+    const val = radio.value;
+    const lostLabel = document.getElementById('typeLostLabel');
+    const foundLabel = document.getElementById('typeFoundLabel');
+    const formTitle = document.getElementById('reportFormTitle');
+    
+    if (val === 'lost') {
+      lostLabel?.classList.add('active-lost');
+      foundLabel?.classList.remove('active-found');
+      if (formTitle) formTitle.textContent = '🔴 Report a Lost Item';
+    } else {
+      foundLabel?.classList.add('active-found');
+      lostLabel?.classList.remove('active-lost');
+      if (formTitle) formTitle.textContent = '🟢 Report a Found Item';
+    }
+  });
+});
+
+// Photo selection & compression
+const lfPhotoBtn = document.getElementById('lfChoosePhotoBtn');
+const lfPhotoInput = document.getElementById('lfPhotoInput');
+const lfPhotoName = document.getElementById('lfPhotoName');
+const lfPhotoRemove = document.getElementById('lfRemovePhotoBtn');
+const lfPhotoPreviewWrap = document.getElementById('lfPhotoPreviewWrap');
+const lfPhotoPreview = document.getElementById('lfPhotoPreview');
+
+lfPhotoBtn?.addEventListener('click', () => lfPhotoInput?.click());
+lfPhotoInput?.addEventListener('change', async () => {
+  if (lfPhotoInput.files && lfPhotoInput.files[0]) {
+    const file = lfPhotoInput.files[0];
+    try {
+      if (lfPhotoName) lfPhotoName.textContent = file.name;
+      const compressed = await compressLfImage(file);
+      lfSelectedPhotoBase64 = compressed;
+      if (lfPhotoPreview) lfPhotoPreview.src = compressed;
+      if (lfPhotoPreviewWrap) lfPhotoPreviewWrap.style.display = 'flex';
+      if (lfPhotoRemove) lfPhotoRemove.style.display = 'inline-block';
+    } catch (err) {
+      console.error('Photo compress error:', err);
+      showToast('Failed to process photo', 'error');
+    }
+  }
+});
+
+lfPhotoRemove?.addEventListener('click', () => {
+  if (lfPhotoInput) lfPhotoInput.value = '';
+  lfSelectedPhotoBase64 = '';
+  if (lfPhotoName) lfPhotoName.textContent = 'No file selected';
+  if (lfPhotoPreviewWrap) lfPhotoPreviewWrap.style.display = 'none';
+  if (lfPhotoRemove) lfPhotoRemove.style.display = 'none';
+});
+
+// Form Submission
+document.getElementById('lostFoundForm')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!auth.currentUser) {
+    showToast('Please sign in first', 'error');
+    return;
+  }
+
+  const submitBtn = document.getElementById('submitLfBtn');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Publishing... ⏳';
+  }
+
+  try {
+    const typeEl = document.querySelector('input[name="reportType"]:checked');
+    const type = typeEl ? typeEl.value : 'lost';
+    const title = document.getElementById('lfTitle')?.value.trim() || '';
+    const category = document.getElementById('lfCategory')?.value || 'other';
+    const location = document.getElementById('lfLocation')?.value.trim() || '';
+    const date = document.getElementById('lfDate')?.value || new Date().toISOString().slice(0, 10);
+    const description = document.getElementById('lfDescription')?.value.trim() || '';
+    const contactNote = document.getElementById('lfContact')?.value.trim() || '';
+
+    const postData = {
+      type,
+      title,
+      category,
+      location,
+      itemDate: date,
+      description,
+      contactNote,
+      photo: lfSelectedPhotoBase64 || '',
+      reporterUid: auth.currentUser.uid,
+      reporterName: currentUserProfileData?.displayName || auth.currentUser.email.split('@')[0],
+      reporterUsername: currentProfileUsername || (auth.currentUser.email.split('@')[0]).toLowerCase().replace(/[^a-z0-9_]/g, ''),
+      reporterAvatar: currentUserProfileData?.photoURL || '',
+      status: 'active',
+      createdAt: new Date().toISOString()
+    };
+
+    await addDoc(collection(db, 'lostAndFound'), postData);
+
+    showToast(type === 'lost' ? '🔴 Lost report published!' : '🟢 Found report published!', 'success');
+
+    // Reset Form
+    document.getElementById('lostFoundForm')?.reset();
+    lfSelectedPhotoBase64 = '';
+    if (lfPhotoName) lfPhotoName.textContent = 'No file selected';
+    if (lfPhotoPreviewWrap) lfPhotoPreviewWrap.style.display = 'none';
+    if (lfPhotoRemove) lfPhotoRemove.style.display = 'none';
+    toggleReportForm(false);
+
+  } catch (err) {
+    console.error('Failed to publish report:', err);
+    showToast('Error: ' + (err.message || 'Could not save report'), 'error');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Publish Report 🚀';
+    }
+  }
+});
+
+// Toolbar filter pills
+document.querySelectorAll('.lf-pill').forEach(pill => {
+  pill.addEventListener('click', () => {
+    document.querySelectorAll('.lf-pill').forEach(p => p.classList.remove('active'));
+    pill.classList.add('active');
+    currentLfFilter = pill.dataset.filter || 'all';
+    renderLostFoundItems();
+  });
+});
+
+// Toolbar category dropdown
+document.getElementById('lfCategoryFilter')?.addEventListener('change', (e) => {
+  currentLfCategory = e.target.value;
+  renderLostFoundItems();
+});
+
+// Toolbar search box
+const lfSearchInput = document.getElementById('lfSearchInput');
+const lfClearSearch = document.getElementById('lfClearSearch');
+
+lfSearchInput?.addEventListener('input', () => {
+  currentLfSearch = lfSearchInput.value.trim().toLowerCase();
+  if (lfClearSearch) lfClearSearch.style.display = currentLfSearch ? 'block' : 'none';
+  renderLostFoundItems();
+});
+
+lfClearSearch?.addEventListener('click', () => {
+  if (lfSearchInput) {
+    lfSearchInput.value = '';
+    lfSearchInput.focus();
+  }
+  currentLfSearch = '';
+  if (lfClearSearch) lfClearSearch.style.display = 'none';
+  renderLostFoundItems();
 });
 console.log('🎓 Student Hub loaded successfully!');
 console.log('🔒 Secure QR Attendance System active.');
