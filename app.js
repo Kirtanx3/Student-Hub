@@ -2028,16 +2028,20 @@ async function sendFriendRequestToUid(targetUid, targetUsername, targetName) {
     return false;
   }
 
+  // 1. Safely check if friendship already exists (don't block if rule denies non-existent doc read)
   try {
-    // Check if friendship already exists
     const fsRef = doc(db, 'friendships', [me, targetUid].sort().join('_'));
     const fsSnap = await getDoc(fsRef);
     if (fsSnap.exists()) {
       showToast('You are already friends!', 'info');
       return true;
     }
+  } catch (fsErr) {
+    console.warn('Friendship pre-check bypassed:', fsErr);
+  }
 
-    // Check existing pending request
+  // 2. Safely check existing pending request
+  try {
     const existing = await getDocs(query(
       collection(db, 'friendRequests'),
       where('fromUid', '==', me),
@@ -2048,10 +2052,15 @@ async function sendFriendRequestToUid(targetUid, targetUsername, targetName) {
       showToast('⏳ Friend request is already pending', 'info');
       return true;
     }
+  } catch (reqErr) {
+    console.warn('Existing request pre-check bypassed:', reqErr);
+  }
 
-    const myName = currentUserProfileData.displayName || currentUserProfileData.name || (currentUser.email ? currentUser.email.split('@')[0] : 'Student');
-    const myUsername = currentProfileUsername || (currentUser.email ? currentUser.email.split('@')[0] : 'user');
-    const myPhoto = currentUserProfileData.photoURL || '';
+  // 3. Send the friend request
+  try {
+    const myName = currentUserProfileData?.displayName || currentUserProfileData?.name || (auth.currentUser.email ? auth.currentUser.email.split('@')[0] : 'Student');
+    const myUsername = currentProfileUsername || (auth.currentUser.email ? auth.currentUser.email.split('@')[0] : 'user');
+    const myPhoto = currentUserProfileData?.photoURL || '';
 
     await addDoc(collection(db, 'friendRequests'), {
       fromUid: me,
@@ -2068,7 +2077,7 @@ async function sendFriendRequestToUid(targetUid, targetUsername, targetName) {
     return true;
   } catch (err) {
     console.error('Error sending friend request:', err);
-    showToast('❌ Failed to send friend request. Try again.', 'error');
+    showToast('❌ ' + (err.code === 'permission-denied' ? 'Permission error: Please update Firestore rules in Firebase Console' : (err.message || 'Failed to send friend request. Try again.')), 'error');
     return false;
   }
 }
