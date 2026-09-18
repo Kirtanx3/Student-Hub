@@ -1088,80 +1088,166 @@ $('chatInput')?.addEventListener('blur', () => {
 });
 
 // ===== CHAT =====
-function setupChatListener() {
-  if (chatUnsubscribe) chatUnsubscribe();
-  
-  chatUnsubscribe = onSnapshot(
-    query(collection(db, 'messages'), orderBy('timestamp', 'asc'), limit(200)),
-    snap => {
-      const container = $('chatMessages');
-      if (!container) return;
-      
-      if (snap.empty) {
-        container.innerHTML = '<div class="empty">💬 No messages yet. Say hello!</div>';
-        return;
+let currentChatId = null; // null = General chat, string = P2P conversation ID
+let currentChatFriendName = '';
+
+function renderChatMessageList(snap, container) {
+  if (snap.empty) {
+    const isP2P = !!currentChatId;
+    container.innerHTML = isP2P 
+      ? `<div class="empty">💬 No private messages yet. Say hello to ${escapeHtml(currentChatFriendName || 'your friend')}!</div>`
+      : '<div class="empty">💬 No messages yet. Say hello!</div>';
+    return;
+  }
+
+  let html = '';
+  snap.forEach(doc => {
+    const d = doc.data();
+    const isSelf = d.senderId === auth.currentUser?.uid;
+    const initial = (d.senderName || '?').charAt(0).toUpperCase();
+    const time = d.timestamp?.toDate?.() || new Date();
+    const timeStr = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const colors = ['#4f46e5','#7c3aed','#ec4899','#f59e0b','#10b981','#3b82f6'];
+    const color = colors[(d.senderName || '').length % colors.length];
+
+    html += `
+      <div class="chat-msg ${isSelf ? 'self' : ''}">
+        <div class="avatar" style="background:${color}">${escapeHtml(initial)}</div>
+        <div class="bubble">
+          <div class="name">${escapeHtml(d.senderName || 'Anonymous')}</div>
+          <div class="text">${escapeHtml(d.text || '')}</div>
+          <span class="time">${timeStr}</span>
+        </div>
+      </div>
+    `;
+  });
+
+  container.innerHTML = html;
+  container.scrollTop = container.scrollHeight;
+}
+
+function setupChatListener(chatId = null, friendTitle = '') {
+  if (chatUnsubscribe) {
+    chatUnsubscribe();
+    chatUnsubscribe = null;
+  }
+
+  currentChatId = chatId;
+  currentChatFriendName = friendTitle;
+
+  const chatTitle = $('chatTitle');
+  const chatBackBtn = $('chatBackBtn');
+  const container = $('chatMessages');
+
+  if (chatId) {
+    // P2P Private Chat mode
+    if (chatTitle) chatTitle.textContent = `💬 ${friendTitle || 'Private Chat'}`;
+    if (chatBackBtn) chatBackBtn.style.display = 'inline-block';
+    if (container) container.innerHTML = `<div class="empty">Loading private messages...</div>`;
+
+    const q = query(
+      collection(db, 'conversations', chatId, 'messages'),
+      orderBy('timestamp', 'asc'),
+      limit(200)
+    );
+
+    chatUnsubscribe = onSnapshot(
+      q,
+      snap => {
+        if (!container) return;
+        renderChatMessageList(snap, container);
+      },
+      err => {
+        console.error('Private chat error:', err);
+        if (container) container.innerHTML = '<div class="empty" style="color:#dc2626;">⚠️ Error loading private chat. Please ensure rules are published.</div>';
       }
-      
-      let html = '';
-      snap.forEach(doc => {
-        const d = doc.data();
-        const isSelf = d.senderId === auth.currentUser?.uid;
-        const initial = (d.senderName || '?').charAt(0).toUpperCase();
-        const time = d.timestamp?.toDate?.() || new Date();
-        const timeStr = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const colors = ['#4f46e5','#7c3aed','#ec4899','#f59e0b','#10b981','#3b82f6'];
-        const color = colors[(d.senderName || '').length % colors.length];
-        
-        html += `
-          <div class="chat-msg ${isSelf ? 'self' : ''}">
-            <div class="avatar" style="background:${color}">${escapeHtml(initial)}</div>
-            <div class="bubble">
-              <div class="name">${escapeHtml(d.senderName || 'Anonymous')}</div>
-              <div class="text">${escapeHtml(d.text || '')}</div>
-              <span class="time">${timeStr}</span>
-            </div>
-          </div>
-        `;
-      });
-      
-      container.innerHTML = html;
-      container.scrollTop = container.scrollHeight;
-    },
-    err => {
-      console.error('Chat error:', err);
-      $('chatMessages').innerHTML = '<div class="empty" style="color:#dc2626;">⚠️ Error loading chat</div>';
-    }
-  );
+    );
+
+  } else {
+    // Global General Chat mode
+    if (chatTitle) chatTitle.textContent = '💬 General';
+    if (chatBackBtn) chatBackBtn.style.display = 'none';
+    if (container) container.innerHTML = '<div class="empty">Loading chat...</div>';
+
+    const q = query(
+      collection(db, 'messages'),
+      orderBy('timestamp', 'asc'),
+      limit(200)
+    );
+
+    chatUnsubscribe = onSnapshot(
+      q,
+      snap => {
+        if (!container) return;
+        renderChatMessageList(snap, container);
+      },
+      err => {
+        console.error('General chat error:', err);
+        if (container) container.innerHTML = '<div class="empty" style="color:#dc2626;">⚠️ Error loading chat. Please update Firestore rules.</div>';
+      }
+    );
+  }
 }
 
 async function sendMessage() {
   const input = $('chatInput');
   const text = input.value.trim();
   if (!text || !auth.currentUser) return;
-  
+
   const btn = $('sendBtn');
   btn.disabled = true;
   input.disabled = true;
-  
+
   if (typingTimeout) { clearTimeout(typingTimeout); typingTimeout = null; }
   await setTyping(false);
-  
+
   try {
     const snap = await getDoc(doc(db, 'users', auth.currentUser.uid));
     const rawName = snap.exists() && snap.data().name ? snap.data().name : auth.currentUser.email.split('@')[0];
     const name = getFirstName(rawName);
-    await addDoc(collection(db, 'messages'), {
-      text,
-      senderId: auth.currentUser.uid,
-      senderName: name,
-      timestamp: serverTimestamp()
-    });
+
+    if (currentChatId) {
+      // Send to P2P conversation subcollection
+      await addDoc(collection(db, 'conversations', currentChatId, 'messages'), {
+        text,
+        senderId: auth.currentUser.uid,
+        senderName: name,
+        timestamp: serverTimestamp()
+      });
+
+      // Update parent conversation document
+      try {
+        await updateDoc(doc(db, 'conversations', currentChatId), {
+          lastMessage: text,
+          lastSenderId: auth.currentUser.uid,
+          updatedAt: serverTimestamp()
+        });
+      } catch (cErr) {
+        await setDoc(doc(db, 'conversations', currentChatId), {
+          participants: currentChatId.split('_'),
+          lastMessage: text,
+          lastSenderId: auth.currentUser.uid,
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+      }
+
+    } else {
+      // Send to Global general messages
+      await addDoc(collection(db, 'messages'), {
+        text,
+        senderId: auth.currentUser.uid,
+        senderName: name,
+        timestamp: serverTimestamp()
+      });
+    }
+
     input.value = '';
     input.focus();
   } catch(e) {
     console.error('Send error:', e);
+    showToast('Failed to send message: ' + (e.message || 'Check connection/rules'), 'error');
   }
-  
+
   btn.disabled = false;
   input.disabled = false;
 }
@@ -1169,6 +1255,9 @@ async function sendMessage() {
 $('sendBtn')?.addEventListener('click', sendMessage);
 $('chatInput')?.addEventListener('keydown', e => {
   if (e.key === 'Enter') sendMessage();
+});
+$('chatBackBtn')?.addEventListener('click', () => {
+  setupChatListener(null);
 });
 
 // ===== REMEMBER ME =====
@@ -2298,14 +2387,14 @@ function watchMyFriends() {
                 </div>
               </div>
             </div>
-            <button class="btn btn-sm btn-primary chat-btn" data-chat="${f.chatId}">💬 Chat</button>
+            <button class="btn btn-sm btn-primary chat-btn" data-chat="${f.chatId}" data-name="${escapeHtml(f.displayName)}" data-username="${escapeHtml(f.username)}">💬 Chat</button>
           </div>
         `;
       });
 
       list.innerHTML = html;
       list.querySelectorAll('.chat-btn').forEach(b => {
-        b.onclick = () => openPrivateChat(b.dataset.chat);
+        b.onclick = () => openPrivateChat(b.dataset.chat, b.dataset.name, b.dataset.username);
       });
     },
     err => {
@@ -2314,15 +2403,17 @@ function watchMyFriends() {
   );
 }
 
-function openPrivateChat(chatId) {
+function openPrivateChat(chatId, friendName = '', friendUsername = '') {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.querySelector('.nav-item[data-view="chat"]')?.classList.add('active');
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById('view-chat')?.classList.add('active');
-  if (typeof loadChat === 'function') {
-    loadChat(chatId);
-  }
+
+  const title = friendName ? `${friendName} ${friendUsername ? '(' + friendUsername + ')' : ''}` : 'Private Chat';
+  setupChatListener(chatId, title);
 }
+
+window.loadChat = (chatId, name) => openPrivateChat(chatId, name);
 
 // ===== EVENT LISTENERS: ADD FRIEND SEARCH & MODALS =====
 let searchDebounceTimer = null;

@@ -405,7 +405,10 @@
         <h2 style="margin-bottom:20px;">🗨️ Live Chat</h2>
         <div class="chat-container">
           <div class="chat-header">
-            <span>💬 General</span>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <button class="btn btn-sm" id="chatBackBtn" style="display:none;padding:3px 8px;font-size:12px;background:var(--surface-hover);border:1px solid var(--border);" type="button">← General</button>
+              <span id="chatTitle">💬 General</span>
+            </div>
             <span class="online" id="onlineCount">🟢 0 online</span>
           </div>
           <div class="chat-messages" id="chatMessages">
